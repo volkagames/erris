@@ -67,7 +67,7 @@ fn to_json_pretty_is_multiline_and_matches_the_value() {
 
 #[test]
 fn to_json_value_shapes_the_object_without_a_subscriber() {
-    use erris::{report, JsonError};
+    use erris::{JsonError, report};
 
     let report = report!("root").with_message("outer");
     let value = report.to_json_value();
@@ -76,15 +76,19 @@ fn to_json_value_shapes_the_object_without_a_subscriber() {
     assert_eq!(obj["message"], "outer");
     let cause = obj["cause"].as_array().expect("cause array");
     assert_eq!(cause, &vec![serde_json::Value::from("root")]);
-    assert!(!obj["location"]
-        .as_array()
-        .expect("location array")
-        .is_empty());
+    assert!(
+        !obj["location"]
+            .as_array()
+            .expect("location array")
+            .is_empty()
+    );
     // no subscriber installed: spantrace is present but empty
-    assert!(obj["spantrace"]
-        .as_array()
-        .expect("spantrace array")
-        .is_empty());
+    assert!(
+        obj["spantrace"]
+            .as_array()
+            .expect("spantrace array")
+            .is_empty()
+    );
 
     // to_json_error round-trips through serde back into JsonError.
     let json_str = report.to_json().unwrap();
@@ -94,8 +98,8 @@ fn to_json_value_shapes_the_object_without_a_subscriber() {
 }
 
 fn install_logger() {
-    use tracing_log::log::LevelFilter;
     use tracing_log::LogTracer;
+    use tracing_log::log::LevelFilter;
     use tracing_subscriber::prelude::*;
 
     LogTracer::builder()
@@ -106,7 +110,6 @@ fn install_logger() {
 
     let subscriber = std::sync::Arc::new(
         tracing_subscriber::Registry::default()
-            .with(tracing_stackdriver::layer().with_source_location(false))
             .with(tracing_error::ErrorLayer::default())
             .with(erris::tracing_fields::Layer::default()),
     );
