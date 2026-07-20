@@ -1,0 +1,12 @@
+[package]
+name = "erris-meta"
+version = "1.0.0"
+edition = "2021"
+description = "Version-stable shared trait for erris, enabling cross-version metadata access between different erris builds in the same binary. Semver-frozen at 1.x — never break the trait signature."
+
+[features]
+default = []
+spantrace = ["dep:tracing-error"]
+
+[dependencies]
+tracing-error = { version = "0.2", optional = true }

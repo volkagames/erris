@@ -1,0 +1,5 @@
+.cargo
+.claude
+.vscode
+/target
+/tmp

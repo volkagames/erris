@@ -1,0 +1,18 @@
+stages:
+  - build
+
+build:
+  stage: build
+  image: docker.zvd.io/hub/rust-builder:debian
+  variables:
+    DOCKER_BUILDKIT: 1
+    GIT_STRATEGY: fetch
+  script:
+    - set -exo pipefail
+    - just publish
+  except:
+    - branches
+  only:
+    - tags
+  tags:
+    - docker

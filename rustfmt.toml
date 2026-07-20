@@ -1,0 +1,9 @@
+comment_width = 100
+group_imports = "One"
+imports_granularity = "Module"
+imports_layout = "HorizontalVertical"
+newline_style = "Unix"
+normalize_comments = true
+unstable_features = true
+use_field_init_shorthand = true
+wrap_comments = true
