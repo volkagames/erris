@@ -3,6 +3,11 @@ name = "erris-meta"
 version = "1.0.0"
 edition = "2024"
 description = "Version-stable shared trait for erris, enabling cross-version metadata access between different erris builds in the same binary. Semver-frozen at 1.x — never break the trait signature."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/volkagames/erris"
+readme = "README.md"
+keywords = ["error", "diagnostics", "report", "trace"]
+categories = ["rust-patterns", "development-tools::debugging"]
 
 [features]
 default = []
