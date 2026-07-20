@@ -5,7 +5,7 @@ edition = "2024"
 description = "Errors, explained."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/volkagames/erris"
-readme = "README.md"
+readme = "../../README.md"
 keywords = ["error", "diagnostics", "report", "trace"]
 categories = ["rust-patterns", "development-tools::debugging"]
 
