@@ -1,7 +1,13 @@
 [package]
 name = "erris"
 version = "2.1.0"
-edition = "2021"
+edition = "2024"
+description = "Errors, explained."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/volkagames/erris"
+readme = "README.md"
+keywords = ["error", "diagnostics", "report", "trace"]
+categories = ["rust-patterns", "development-tools::debugging"]
 
 [features]
 default = ["spantrace", "to_json"]

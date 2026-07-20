@@ -37,7 +37,9 @@ impl<'a> ReportLink<'a> {
     /// Whether this link is a transparent (message-less) wrapper. Foreign
     /// errors are never transparent in erris's sense.
     pub fn is_transparent(&self) -> bool {
-        self.meta().map(|m| m.report_is_transparent()).unwrap_or(false)
+        self.meta()
+            .map(|m| m.report_is_transparent())
+            .unwrap_or(false)
     }
 }
 
@@ -69,7 +71,9 @@ impl<'a> Iterator for ReportIterator<'a> {
     }
 }
 
-pub(crate) fn branch<'a>(link: &ReportLink<'a>) -> (Option<ReportLink<'a>>, Option<ReportLink<'a>>) {
+pub(crate) fn branch<'a>(
+    link: &ReportLink<'a>,
+) -> (Option<ReportLink<'a>>, Option<ReportLink<'a>>) {
     // Own links branch through the shared trait, so both children of a wrapper
     // (cause and message) survive a version boundary. Foreign errors have no
     // ReportMeta view and fall back to std source() traversal.
@@ -78,10 +82,10 @@ pub(crate) fn branch<'a>(link: &ReportLink<'a>) -> (Option<ReportLink<'a>>, Opti
         let mut children = (lhs.map(ReportLink::Own), rhs.map(ReportLink::Own));
         // A foreign inner error (e.g. ReportType::Error) is not exposed by
         // report_branch(); recover it via source() so the chain continues.
-        if children.0.is_none() {
-            if let Some(source) = link.as_error().source() {
-                children.0 = Some(ReportLink::Foreign(source));
-            }
+        if children.0.is_none()
+            && let Some(source) = link.as_error().source()
+        {
+            children.0 = Some(ReportLink::Foreign(source));
         }
         return children;
     }
