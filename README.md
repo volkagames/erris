@@ -34,6 +34,13 @@ keeps the internals honest:
   instead of living in a separate log elsewhere — especially handy in branchy
   applications and web servers where the failing path is otherwise hard to
   reconstruct.
+- **Multiple `erris` versions coexist.** When two `erris` versions end up in one
+  dependency graph, reports cross the boundary through the version-stable
+  `erris-meta` trait (pinned to `1.x` forever, so its `TypeId` never splits).
+  A report built by one version stays fully inspectable in another — locations,
+  spans, and both branches of every context wrapper survive — instead of
+  collapsing into a bare `dyn Error` string somewhere in the middle of the
+  trace.
 
 ## Which method do I call?
 
