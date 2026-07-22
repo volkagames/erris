@@ -32,7 +32,7 @@ valuable = [
 [dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }
 indenter = { version = "0.3", features = ["std"] }
-serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde = { version = "1.0.229", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 tracing = { version = "0.1.44", optional = true }
 tracing-core = { version = "0.1", optional = true }
@@ -44,5 +44,5 @@ valuable-serde = { version = "0.1.1", optional = true }
 [dev-dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }
 rusty-fork = "0.3.1"
-thiserror = "2.0.18"
+thiserror = "2.0.19"
 tracing-log = "0.2"
