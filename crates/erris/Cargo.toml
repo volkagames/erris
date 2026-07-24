@@ -10,7 +10,7 @@ keywords = ["error", "diagnostics", "report", "trace"]
 categories = ["rust-patterns", "development-tools::debugging"]
 
 [features]
-default = ["spantrace", "to_json"]
+default = ["spantrace"]
 spantrace = [
     "dep:tracing-core",
     "dep:tracing-error",
@@ -21,13 +21,7 @@ spantrace = [
 backtrace = []
 keep-duplicate-location = []
 to_json = ["dep:serde_json", "dep:serde", "spantrace"]
-valuable = [
-    "spantrace",
-    "dep:tracing-core",
-    "dep:valuable",
-    "dep:valuable-serde",
-    "tracing-core/valuable",
-]
+serde_json_value = ["to_json"]
 
 [dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }
@@ -38,8 +32,6 @@ tracing = { version = "0.1.44", optional = true }
 tracing-core = { version = "0.1", optional = true }
 tracing-error = { version = "0.2", optional = true }
 tracing-subscriber = { version = "0.3.23", optional = true }
-valuable = { version = "0.1.1", optional = true }
-valuable-serde = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }

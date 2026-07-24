@@ -44,10 +44,11 @@
 //! # Features
 //!
 //! - `spantrace` (default): capture a `tracing` span trace per report link.
-//! - `to_json` (default, implies `spantrace`): [`Report::to_json`] and the
+//! - `to_json` (implies `spantrace`): [`Report::to_json`] and the
 //!   `tracing_fields` span-field layer.
 //! - `backtrace`: capture a `std::backtrace::Backtrace`.
-//! - `valuable`: record `valuable` span fields into JSON.
+//! - `serde_json_value`: inject arbitrary `serde_json::Value` into layer fields
+//!   via [`JsonVisitor::record_json`](tracing_fields::JsonVisitor::record_json).
 #![warn(
     bad_style,
     dead_code,

@@ -5,14 +5,31 @@ use tracing_subscriber::field::Visit;
 /// A map of fields to values for a given span
 pub type LayerFields = serde_json::Map<String, serde_json::Value>;
 
-pub(crate) struct JsonVisitor<'a> {
+pub struct JsonVisitor<'a> {
     values: &'a mut LayerFields,
 }
 
 impl<'a> JsonVisitor<'a> {
     /// Returns a new default visitor using the provided writer
-    pub(crate) fn new(values: &'a mut LayerFields) -> Self {
+    pub fn new(values: &'a mut LayerFields) -> Self {
         Self { values }
+    }
+
+    /// Record an arbitrary `serde_json::Value` into the layer fields.
+    ///
+    /// This method is not called by `tracing_core`; it exists for users
+    /// who want to inject pre-serialised values (e.g. from `serde_json`)
+    /// into the JSON span fields.
+    ///
+    /// Enable via the `serde_json_value` feature:
+    /// ```toml
+    /// [dependencies]
+    /// erris = { version = "2", features = ["serde_json_value"] }
+    /// ```
+    #[cfg(feature = "serde_json_value")]
+    pub fn record_json(&mut self, field: &Field, value: impl Into<serde_json::Value>) {
+        self.values
+            .insert(field.name().to_string(), value.into());
     }
 }
 
@@ -42,13 +59,6 @@ impl Visit for JsonVisitor<'_> {
             field.name().to_string(),
             serde_json::Value::from(format!("{value:?}")),
         );
-    }
-
-    #[cfg(all(tracing_unstable, feature = "valuable"))]
-    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
-        let value = serde_json::to_value(valuable_serde::Serializable::new(value)).unwrap();
-
-        self.values.insert(field.name().to_string(), value);
     }
 }
 

@@ -117,3 +117,61 @@ fn chain_descends_into_a_foreign_source() {
     assert!(foreign.location().is_none());
     assert!(!foreign.is_transparent(), "foreign errors are never transparent");
 }
+
+#[test]
+fn chain_shallow_wrapper_yields_correct_count() {
+    // report!(Io("loop")).with_message("context")
+    // Produces: Wrapper(root) -> [Message, Cause(Io)] -> Io
+    // 4 items: wrapper report, message report, cause report, leaf error.
+    let report = report!(Io("loop")).with_message("context");
+    let links: Vec<_> = report.chain().collect();
+    assert_eq!(links.len(), 4, "wrapper + message + cause + error");
+    assert!(links.iter().any(|l| l.as_error().to_string() == "context"));
+    assert!(links.iter().any(|l| l.as_error().to_string() == "io: loop"));
+}
+
+#[test]
+fn chain_deep_wrappers_yields_correct_count() {
+    // report!(TestError)
+    //   .with_message("level 4")
+    //   .with_message("level 3")
+    //   .with_message("level 2")
+    //   .with_message("level 1")
+    //
+    // Structure: Wrapper(4, Wrapper(3, Wrapper(2, Wrapper(1, Report(Error(TestError))))))
+    // Yields in DFS order:
+    //   [0] Wrapper(4) report
+    //   [1] Message("level 4") report
+    //   [2] Wrapper(3) report
+    //   [3] Message("level 3") report
+    //   [4] Wrapper(2) report
+    //   [5] Message("level 2") report
+    //   [6] Wrapper(1) report
+    //   [7] Message("level 1") report
+    //   [8] Error(TestError) report
+    //   [9] TestError
+    // Total: 4 wrapper + 4 message + 1 error report + 1 leaf error = 10.
+    let report = report!(TestError)
+        .with_message("level 4")
+        .with_message("level 3")
+        .with_message("level 2")
+        .with_message("level 1");
+    let mut chain = report.chain();
+
+    // Structure: level1(wrapper( level2(wrapper( level3(wrapper( level4(wrapper(
+    //   Report(Error(TestError)), "level4" )), "level3" )), "level2" )),
+    //   "level1" ))
+    // chain() yields from innermost (TestError) outward to outermost wrapper.
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 1");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 1");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 2");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 2");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 3");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 3");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 4");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "level 4");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "TestError");
+    assert_eq!(chain.next().unwrap().as_error().to_string(), "TestError");
+    assert!(chain.next().is_none());
+}
+

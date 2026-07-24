@@ -43,6 +43,22 @@ impl<'a> ReportLink<'a> {
     }
 }
 
+/// Iterates all links in a report chain from innermost to outermost using
+/// stack-based DFS. Own links are yielded before their children; foreign
+/// links are followed via `Error::source()`.
+///
+/// # Contract
+///
+/// Assumes the `Error::source()` chain is acyclic. A cyclic `source()` (which
+/// can only be constructed via `unsafe` Rust — safe code cannot create a
+/// reference cycle of owned values with `&'static` lifetimes) will cause
+/// `next()` to loop forever. No cycle detection is present; this matches
+/// `anyhow` and `eyre` which share the same contract.
+///
+/// Legitimate same-pointer references (e.g. `&Outer` and `&Outer.0` where
+/// both point to the same heap allocation) are **not** treated as cycles —
+/// each is yielded as a distinct link. This is correct: they represent
+/// different views of the same report, not a loop.
 #[derive(Debug)]
 pub struct ReportIterator<'a> {
     stack: Vec<ReportLink<'a>>,
@@ -59,6 +75,7 @@ impl<'a> Iterator for ReportIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let current = self.stack.pop()?;
+
         let (lhs, rhs) = branch(&current);
         if let Some(lhs) = lhs {
             self.stack.push(lhs);

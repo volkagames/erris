@@ -4,19 +4,16 @@ use std::sync::Arc;
 #[cfg(feature = "spantrace")]
 use tracing::{dispatcher, span};
 
-#[repr(C)]
 #[must_use]
 pub struct Report {
     pub(crate) boxed: Box<ReportError>,
 }
 
-#[repr(C)]
 pub struct ReportError {
     pub(crate) inner: ReportType,
     pub(crate) track: ReportTrack,
 }
 
-#[repr(C)]
 #[derive(Debug)]
 pub struct ReportTrack {
     pub(crate) location: &'static std::panic::Location<'static>,
@@ -30,7 +27,6 @@ pub struct ReportTrack {
     pub(crate) backtrace: Option<crate::Backtrace>,
 }
 
-#[repr(C)]
 #[derive(Debug)]
 pub enum ReportType {
     Transparent,
@@ -140,11 +136,10 @@ where
     E: std::error::Error + Send + Sync + 'static,
 {
     if std::any::TypeId::of::<E>() == std::any::TypeId::of::<ReportError>() {
-        // SAFETY: the TypeId check guarantees E is exactly ReportError, so the
-        // two types have identical layout. transmute_copy reads the value at
-        // the source type and reinterprets it as the target; we forget the
-        // original to avoid a double drop.
-        let inner = unsafe { std::mem::transmute_copy::<E, ReportError>(&error) };
+        // SAFETY: TypeId check guarantees E is ReportError — identical layout.
+        // ptr::read reinterprets the bits without touching padding; forget avoids
+        // double-drop.
+        let inner = unsafe { std::ptr::read(&error as *const E as *const ReportError) };
         std::mem::forget(error);
         Ok(Report {
             boxed: Box::new(inner),
