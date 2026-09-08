@@ -7,7 +7,10 @@ use erris::*;
 
 #[test]
 fn display_is_the_top_message_only() {
-    assert_eq!(report!("some error message").to_string(), "some error message");
+    assert_eq!(
+        report!("some error message").to_string(),
+        "some error message"
+    );
     // a context wrapper displays its message, not the cause
     let wrapped = report!("the cause").with_message("the context");
     assert_eq!(wrapped.to_string(), "the context");
@@ -100,7 +103,9 @@ fn debug_snapshot_of_deeply_nested_error() {
     let debug = format!("{top:?}");
 
     // Split off the stable head (header + causes) from the location tail.
-    let (head, tail) = debug.split_once("\n\nLocation:").expect("has Location block");
+    let (head, tail) = debug
+        .split_once("\n\nLocation:")
+        .expect("has Location block");
 
     assert_eq!(
         head,

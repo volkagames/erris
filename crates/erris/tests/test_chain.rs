@@ -25,8 +25,14 @@ fn chain_visits_both_branches_of_a_wrapper() {
         .map(|link| link.as_error().to_string())
         .collect();
 
-    assert!(rendered.iter().any(|s| s == "context"), "message branch: {rendered:?}");
-    assert!(rendered.iter().any(|s| s == "io: disk gone"), "cause branch: {rendered:?}");
+    assert!(
+        rendered.iter().any(|s| s == "context"),
+        "message branch: {rendered:?}"
+    );
+    assert!(
+        rendered.iter().any(|s| s == "io: disk gone"),
+        "cause branch: {rendered:?}"
+    );
 }
 
 #[test]
@@ -35,7 +41,10 @@ fn chain_links_expose_own_metadata() {
     let root = report.chain().next().expect("at least one link");
 
     assert!(root.location().is_some(), "own link carries a location");
-    assert!(!root.is_transparent(), "a message report is not transparent");
+    assert!(
+        !root.is_transparent(),
+        "a message report is not transparent"
+    );
     assert!(root.meta().is_some(), "own link exposes a ReportMeta view");
 }
 
@@ -45,7 +54,10 @@ fn chain_marks_a_transparent_link() {
     // has a transparent link to observe.
     let report = report!().with_report(report!(TestError));
     let has_transparent = report.chain().any(|link| link.is_transparent());
-    assert!(has_transparent, "the transparent anchor must be visible in the chain");
+    assert!(
+        has_transparent,
+        "the transparent anchor must be visible in the chain"
+    );
 }
 
 #[test]
@@ -58,7 +70,10 @@ fn chain_descends_through_an_arc_report_link() {
     let reached = report
         .chain()
         .any(|link| link.as_error().to_string() == "io: shared cause");
-    assert!(reached, "the Arc-shared inner report is reachable via the chain");
+    assert!(
+        reached,
+        "the Arc-shared inner report is reachable via the chain"
+    );
 }
 
 #[test]
@@ -72,10 +87,16 @@ fn source_walks_every_link_kind() {
     assert!((*nested).source().is_some(), "Report exposes a source");
 
     let wrapped = report!(TestError).with_message("ctx");
-    assert!((*wrapped).source().is_some(), "Wrapper exposes its cause as source");
+    assert!(
+        (*wrapped).source().is_some(),
+        "Wrapper exposes its cause as source"
+    );
 
     // Leaves have no source.
-    assert!((*report!("leaf")).source().is_none(), "Message has no source");
+    assert!(
+        (*report!("leaf")).source().is_none(),
+        "Message has no source"
+    );
     assert!((*report!()).source().is_none(), "Transparent has no source");
 }
 
@@ -115,7 +136,10 @@ fn chain_descends_into_a_foreign_source() {
     // Foreign links have no ReportMeta view.
     assert!(foreign.meta().is_none());
     assert!(foreign.location().is_none());
-    assert!(!foreign.is_transparent(), "foreign errors are never transparent");
+    assert!(
+        !foreign.is_transparent(),
+        "foreign errors are never transparent"
+    );
 }
 
 #[test]
@@ -174,4 +198,3 @@ fn chain_deep_wrappers_yields_correct_count() {
     assert_eq!(chain.next().unwrap().as_error().to_string(), "TestError");
     assert!(chain.next().is_none());
 }
-

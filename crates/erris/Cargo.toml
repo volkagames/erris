@@ -1,7 +1,8 @@
 [package]
 name = "erris"
-version = "2.1.0"
+version = "2.2.0"
 edition = "2024"
+rust-version = "1.86"
 description = "Errors, explained."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/volkagames/erris"
@@ -36,5 +37,5 @@ tracing-subscriber = { version = "0.3.23", optional = true }
 [dev-dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }
 rusty-fork = "0.3.1"
-thiserror = "2.0.19"
+thiserror = "2.0.20"
 tracing-log = "0.2"

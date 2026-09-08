@@ -140,4 +140,3 @@ fn is_same_location(
 ) -> bool {
     lhs.file() == rhs.file() && lhs.line() == rhs.line()
 }
-

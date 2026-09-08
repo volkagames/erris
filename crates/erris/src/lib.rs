@@ -41,14 +41,21 @@
 //! `Report` through `Deref`) downcast back to a concrete error type anywhere in
 //! the chain, including a boxed error's own `source()` chain.
 //!
+//! # Assertion macros
+//!
+//! [`be`] holds `?`-friendly checks — [`be::some!`](be::some), [`be::eq!`](be::eq),
+//! [`be::in_range!`](be::in_range), … — that hand back a [`Result`] instead of panicking.
+//!
 //! # Features
 //!
 //! - `spantrace` (default): capture a `tracing` span trace per report link.
-//! - `to_json` (implies `spantrace`): [`Report::to_json`] and the
-//!   `tracing_fields` span-field layer.
+//! - `to_json` (implies `spantrace`): [`Report::to_json`] and the `tracing_fields` span-field
+//!   layer.
 //! - `backtrace`: capture a `std::backtrace::Backtrace`.
-//! - `serde_json_value`: inject arbitrary `serde_json::Value` into layer fields
-//!   via [`JsonVisitor::record_json`](tracing_fields::JsonVisitor::record_json).
+//! - `serde_json_value`: inject arbitrary `serde_json::Value` into layer fields via
+//!   [`JsonVisitor::record_json`](tracing_fields::JsonVisitor::record_json).
+//! - `keep-duplicate-location`: keep consecutive locations that differ only by column; by default
+//!   they collapse into one entry per file and line.
 #![warn(
     bad_style,
     dead_code,
@@ -68,6 +75,7 @@
     while_true
 )]
 
+pub mod be;
 mod report;
 mod report_debug;
 mod report_into;
@@ -100,6 +108,11 @@ pub mod tracing_fields;
 // re export
 #[cfg(feature = "backtrace")]
 pub use std::backtrace::Backtrace;
+// The `be` comparison macros record their operands in a span, so they need a
+// path to `tracing` that resolves in the caller's crate.
+#[cfg(feature = "spantrace")]
+#[doc(hidden)]
+pub use tracing as __tracing;
 #[cfg(feature = "spantrace")]
 pub use tracing_error::SpanTrace;
 
@@ -110,11 +123,11 @@ pub mod prelude {
 /// Build a [`Report`] from a message, a format string, an error value, or
 /// another report.
 ///
-/// - `report!()` — a transparent (message-less) report, useful as an anchor for
-///   a later `with_message`.
+/// - `report!()` — a transparent (message-less) report, useful as an anchor for a later
+///   `with_message`.
 /// - `report!("literal")` / `report!("x = {x}")` — a message report.
-/// - `report!(value)` — dispatches on the value: a `Display`-able string, a
-///   `std::error::Error`, a boxed `dyn Error`, an `Arc<Report>`, or a `Report`.
+/// - `report!(value)` — dispatches on the value: a `Display`-able string, a `std::error::Error`, a
+///   boxed `dyn Error`, an `Arc<Report>`, or a `Report`.
 /// - `report!("{}", arg)` — a formatted message report.
 ///
 /// The caller location is captured at the macro site.

@@ -8,6 +8,8 @@ lint:
     cargo deny --log-level error check advisories bans sources
     cargo fmt --all --check -- --unstable-features --error-on-unformatted
     cargo check
+    cargo check -p erris --no-default-features
+    cargo check -p erris --all-features
     cargo clippy
     cargo sort -c -w
     cargo machete

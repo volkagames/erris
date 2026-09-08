@@ -4,7 +4,7 @@
 
 mod common;
 use common::TestError;
-use erris::{report, BoxIntoReport, IntoReport, Report, ReportError, ReportType};
+use erris::{BoxIntoReport, IntoReport, Report, ReportError, ReportType, report};
 use std::borrow::Cow;
 use std::sync::Arc;
 

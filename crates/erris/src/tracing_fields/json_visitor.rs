@@ -28,8 +28,7 @@ impl<'a> JsonVisitor<'a> {
     /// ```
     #[cfg(feature = "serde_json_value")]
     pub fn record_json(&mut self, field: &Field, value: impl Into<serde_json::Value>) {
-        self.values
-            .insert(field.name().to_string(), value.into());
+        self.values.insert(field.name().to_string(), value.into());
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
+    Report,
     collect_causes_without_consecutive_duplicates,
     collect_locations_without_consecutive_duplicates,
-    Report,
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,10 +86,10 @@ impl Report {
 mod spantrace {
     use super::JsonErrorSpan;
     use crate::tracing_fields::get_global_subscriber;
-    use tracing::span::Id as SpanId;
     use tracing::Metadata;
-    use tracing_subscriber::registry::{LookupSpan, SpanData};
+    use tracing::span::Id as SpanId;
     use tracing_subscriber::Registry;
+    use tracing_subscriber::registry::{LookupSpan, SpanData};
 
     pub(crate) fn to_json_value(spantrace: &tracing_error::SpanTrace) -> Vec<JsonErrorSpan> {
         let mut result = vec![];

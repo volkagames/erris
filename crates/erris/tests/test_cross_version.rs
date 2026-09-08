@@ -47,7 +47,11 @@ fn wrapper_branches_survive_through_shared_trait() {
     let rhs = rhs.map(|m| (m as &dyn std::error::Error).to_string());
 
     assert_eq!(lhs.as_deref(), Some("the cause"));
-    assert_eq!(rhs.as_deref(), Some("the context"), "message branch must not be lost");
+    assert_eq!(
+        rhs.as_deref(),
+        Some("the context"),
+        "message branch must not be lost"
+    );
 }
 
 #[test]

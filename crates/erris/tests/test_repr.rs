@@ -15,9 +15,9 @@ fn test_null_pointer_optimization() {
 
 #[test]
 fn test_drop() {
+    use std::sync::Arc;
     use std::sync::atomic::AtomicBool;
     use std::sync::atomic::Ordering::SeqCst;
-    use std::sync::Arc;
 
     #[derive(Debug)]
     struct DropError {

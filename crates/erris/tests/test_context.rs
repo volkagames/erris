@@ -56,9 +56,8 @@ fn wrap_report_on_boxed_dyn_error_result() {
 #[test]
 fn wrap_report_with_is_lazy() {
     // the closure is only evaluated on the Err path
-    let ok: erris::Result<i32> = Ok::<i32, Report>(1).wrap_report_with(|| -> Report {
-        panic!("must not run on Ok")
-    });
+    let ok: erris::Result<i32> =
+        Ok::<i32, Report>(1).wrap_report_with(|| -> Report { panic!("must not run on Ok") });
     assert_eq!(ok.unwrap(), 1);
 }
 
@@ -85,12 +84,16 @@ fn ok_or_report_with_builds_lazily_on_the_empty_case() {
     // Some / Ok short-circuit without calling the closure.
     assert_eq!(Some(1).ok_or_report_with(|| report!("unused")).unwrap(), 1);
     assert_eq!(
-        Ok::<_, TestError>(2).ok_or_report_with(|| report!("unused")).unwrap(),
+        Ok::<_, TestError>(2)
+            .ok_or_report_with(|| report!("unused"))
+            .unwrap(),
         2
     );
 
     // None builds the report from the closure.
-    let err = None::<i32>.ok_or_report_with(|| report!("none built")).unwrap_err();
+    let err = None::<i32>
+        .ok_or_report_with(|| report!("none built"))
+        .unwrap_err();
     assert_eq!(err.to_string(), "none built");
 
     // Err keeps the original error as a cause under the closure-built report.

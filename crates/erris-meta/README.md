@@ -62,7 +62,8 @@ No features are enabled by default.
 
 ## License
 
-Licensed under either of Apache-2.0 or MIT at your option, matching [`erris`].
+Licensed under either of [Apache-2.0](../../LICENSE-APACHE) or
+[MIT](../../LICENSE-MIT) at your option, matching [`erris`].
 
 [`erris`]: ../erris
 [`ReportMeta`]: src/lib.rs

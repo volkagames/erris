@@ -1,6 +1,6 @@
 use super::*;
-use tracing_core::span::{Attributes, Id, Record};
 use tracing_core::Subscriber;
+use tracing_core::span::{Attributes, Id, Record};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 

@@ -76,10 +76,16 @@ fn unwrap_mut_traverses_wrapper_and_nested_report() {
     // The mutable path must descend both a context wrapper's cause branch and a
     // nested report, mirroring unwrap_ref (minus the ArcReport case above).
     let mut wrapped = report!(TestError).with_message("context");
-    assert!(wrapped.unwrap_mut::<TestError>().is_some(), "through wrapper cause");
+    assert!(
+        wrapped.unwrap_mut::<TestError>().is_some(),
+        "through wrapper cause"
+    );
 
     let mut nested = report!(report!(TestError));
-    assert!(nested.unwrap_mut::<TestError>().is_some(), "through nested report");
+    assert!(
+        nested.unwrap_mut::<TestError>().is_some(),
+        "through nested report"
+    );
 }
 
 #[test]
