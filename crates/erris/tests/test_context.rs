@@ -3,8 +3,9 @@
 
 mod common;
 use common::TestError;
-use erris::prelude::*;
-use erris::report;
+// Named imports, not the prelude glob: with `tracked_prelude` the glob replaces
+// std's `Result`, `Ok` and `Err`, and these tests are about std results.
+use erris::{OkOrReport, Report, TrackReport, WrapBoxReport, WrapReport, report};
 
 #[test]
 fn ok_or_report_on_option() {

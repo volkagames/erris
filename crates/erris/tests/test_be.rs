@@ -286,7 +286,7 @@ fn composes_with_the_question_mark_operator() {
         let v = be::some!(v, "value is required")?;
         be::non_zero!(v, "value must be non zero")?;
         be::in_range!(v, 1..=100)?;
-        Ok(v)
+        erris::Result::Ok(v)
     }
 
     assert_eq!(check(Some(42)).unwrap(), 42);
@@ -318,4 +318,20 @@ fn a_trailing_comma_is_accepted() {
         "message",
     );
     assert!(be::matches!(Some(1), None,).is_err());
+}
+
+#[test]
+fn err_takes_a_result_by_reference() {
+    // The result stays where it is: `err!` hands back a reference to the error.
+    struct Holder {
+        state: Result<u32, &'static str>,
+    }
+    let mut holder = Holder { state: Err("boom") };
+
+    assert_eq!(*be::err!(&holder.state).unwrap(), "boom");
+    *be::err!(&mut holder.state).unwrap() = "changed";
+    assert_eq!(holder.state, Err("changed"));
+
+    // A temporary works too, as long as the outcome is used in the same statement.
+    assert!(be::err!(&Ok::<u32, &str>(1)).is_err());
 }

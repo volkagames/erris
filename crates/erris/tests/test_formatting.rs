@@ -124,7 +124,14 @@ fn debug_snapshot_of_deeply_nested_error() {
         .lines()
         .filter(|l| l.contains("test_formatting.rs"))
         .collect();
-    assert_eq!(frames.len(), 6, "one frame per tracked node");
+    // `ctx.with_report(report!(..))` builds two reports on one line, in different
+    // columns: `keep-duplicate-location` lists both, the default collapses them.
+    let expected = if cfg!(feature = "keep-duplicate-location") {
+        7
+    } else {
+        6
+    };
+    assert_eq!(frames.len(), expected, "one frame per tracked node");
     for (n, frame) in frames.iter().enumerate() {
         assert!(
             frame.trim_start().starts_with(&format!("{n}: ")),

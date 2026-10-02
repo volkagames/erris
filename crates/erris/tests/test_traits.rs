@@ -35,7 +35,7 @@ fn question_mark_converts_std_error_into_report() {
         Err(std::io::Error::other("oh no!"))
     }
 
-    fn wraps() -> erris::Result<()> {
+    fn wraps() -> std::result::Result<(), Report> {
         fails()?; // io::Error -> Report via From
         Ok(())
     }

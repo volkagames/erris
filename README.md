@@ -120,6 +120,53 @@ expected non zero: config.retries
 expected timeout == expected, got 30 and 45
 ```
 
+## Tracked results (nightly)
+
+With std `Result`, a `?` that hands a `Report` on unchanged records nothing: the
+hop needs an explicit `.track()?`. The `tracked` feature turns `erris::Result`
+into `TrackedResult`, whose `?` records the location itself:
+
+```rust
+use erris::prelude::*; // with `tracked_prelude`: the tracking `Result`, `Ok`, `Err`
+
+fn parse(s: &str) -> Result<u32> {
+    let n: u32 = s.parse()?; // std error -> Report, located here
+    Ok(n)
+}
+
+fn double(s: &str) -> Result<u32> {
+    let n = parse(s)?; // located here too, with no `.track()`
+    Ok(n * 2)
+}
+```
+
+`TrackedResult` mirrors the methods of std `Result`, and its error is always a
+`Report`. A function whose signature a foreign trait dictates — a web handler, a
+`FromStr` impl — keeps returning std `Result`; `?` converts in both directions
+and records the hop either way.
+
+Each hop is recorded once: a report already located on the `?` line — by
+`wrap_report`, a `be` macro, or the error conversion itself — gets no second
+frame. `wrap_report`, `ok_or_report`, `track` and the `be` macros return
+`erris::Result`, so with `tracked` on they return a `TrackedResult`, and
+`be::ok!` / `be::err!` accept one.
+
+Before turning it on:
+
+- **It needs nightly.** The hook is `try_trait_v2`, which is unstable. Tested
+  with the nightlies of 2026-07-30 (1.99) and 2026-09-25 (1.100).
+- **It is not additive.** Cargo unifies features across the build, so `tracked`
+  changes `erris::Result` for every crate that depends on erris, not only yours.
+  Enable it in an application, not in a library.
+- **`Ok` and `Err` must be the tracking ones.** std's `Ok(v)` is not a
+  `TrackedResult`. Either import `erris::tracked::{Ok, Err}`, or enable
+  `tracked_prelude` and glob `erris::prelude`.
+- **`tracked_prelude` replaces std's names in every module that globs the
+  prelude.** A std result in such a module has to be spelled
+  `std::result::Result<T, E>`, with `std::result::Result::Ok` and `Err`.
+- **`erris::Result<T, E>` with an error type is a compile error.** The error is
+  fixed to `Report`.
+
 ## Features
 
 - `spantrace` _(default)_ — capture a `tracing` span trace per report link.
@@ -130,8 +177,13 @@ expected timeout == expected, got 30 and 45
   `serde_json::Value` into span fields via `JsonVisitor::record_json`.
 - `keep-duplicate-location` — keep consecutive locations that differ only by
   column; by default they collapse into one entry per file and line.
+- `tracked` _(nightly only)_ — `erris::Result` becomes `TrackedResult`, whose `?`
+  records a location on every hop. See
+  [Tracked results](#tracked-results-nightly).
+- `tracked_prelude` (implies `tracked`) — `erris::prelude` also exports the
+  tracking `Result`, `Ok` and `Err`.
 
-Minimum supported Rust version: 1.86.
+Minimum supported Rust version: 1.86; `tracked` needs a nightly toolchain.
 
 Full API documentation: [docs.rs/erris](https://docs.rs/erris).
 

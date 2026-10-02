@@ -1,6 +1,6 @@
 [package]
 name = "erris"
-version = "2.2.0"
+version = "2.3.0"
 edition = "2024"
 rust-version = "1.86"
 description = "Errors, explained."
@@ -9,6 +9,11 @@ repository = "https://github.com/volkagames/erris"
 readme = "../../README.md"
 keywords = ["error", "diagnostics", "report", "trace"]
 categories = ["rust-patterns", "development-tools::debugging"]
+
+# docs.rs builds on nightly and passes `--cfg docsrs`, which also documents the
+# `tracked` module without turning `erris::Result` into `TrackedResult`.
+[package.metadata.docs.rs]
+features = ["to_json", "serde_json_value", "backtrace"]
 
 [features]
 default = ["spantrace"]
@@ -23,6 +28,10 @@ backtrace = []
 keep-duplicate-location = []
 to_json = ["dep:serde_json", "dep:serde", "spantrace"]
 serde_json_value = ["to_json"]
+# Nightly only: needs `try_trait_v2`. Turns `erris::Result` into `TrackedResult`.
+tracked = []
+# Also exports the tracking `Result`, `Ok` and `Err` from `erris::prelude`.
+tracked_prelude = ["tracked"]
 
 [dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }

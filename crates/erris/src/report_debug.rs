@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use crate::{ReportError, ReportIterator, ReportType};
+use crate::{Report, ReportError, ReportIterator, ReportType};
 use std::fmt::{Debug, Display, Write as _};
 
 impl Display for Report {

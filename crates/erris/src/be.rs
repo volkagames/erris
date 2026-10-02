@@ -2,6 +2,7 @@
 //! panic.
 //!
 //! ```
+//! # #[cfg(feature = "tracked")] use erris::tracked::Ok;
 //! use erris::be;
 //!
 //! fn check(v: Option<u32>) -> erris::Result<()> {
@@ -53,6 +54,22 @@
 //! The checked expression is evaluated exactly once, so arguments with side
 //! effects are safe.
 //!
+//! [`ok!`](crate::be::ok) and [`err!`](crate::be::err) take the result by value.
+//! To check one that has to stay where it is, pass a reference and get
+//! references back:
+//!
+//! ```
+//! use erris::be;
+//!
+//! struct Job {
+//!     outcome: Result<String, u8>,
+//! }
+//! let job = Job { outcome: Err(7) };
+//!
+//! let code: &u8 = be::err!(&job.outcome).unwrap();
+//! assert_eq!(*code, 7);
+//! ```
+//!
 //! The comparison macros require [`Debug`](std::fmt::Debug) on both operands,
 //! like [`assert_eq!`]: the values go into the report, and — with the
 //! `spantrace` feature — into a span recorded alongside it.
@@ -80,6 +97,74 @@ pub use crate::{
     __be_sure as sure,
     __be_zero as zero,
 };
+
+/// What [`ok!`](crate::be::ok) and [`err!`](crate::be::err) accept: a std
+/// `Result` and, with the `tracked` feature, a `TrackedResult` — by value or by
+/// reference. A reference yields references, as matching on `&result` does.
+#[doc(hidden)]
+pub trait __BeResult {
+    type Ok;
+    type Err;
+
+    fn __be_into_std(self) -> std::result::Result<Self::Ok, Self::Err>;
+}
+
+impl<T, E> __BeResult for std::result::Result<T, E> {
+    type Err = E;
+    type Ok = T;
+
+    fn __be_into_std(self) -> std::result::Result<T, E> {
+        self
+    }
+}
+
+impl<'a, T, E> __BeResult for &'a std::result::Result<T, E> {
+    type Err = &'a E;
+    type Ok = &'a T;
+
+    fn __be_into_std(self) -> std::result::Result<&'a T, &'a E> {
+        self.as_ref()
+    }
+}
+
+impl<'a, T, E> __BeResult for &'a mut std::result::Result<T, E> {
+    type Err = &'a mut E;
+    type Ok = &'a mut T;
+
+    fn __be_into_std(self) -> std::result::Result<&'a mut T, &'a mut E> {
+        self.as_mut()
+    }
+}
+
+#[cfg(feature = "tracked")]
+impl<T> __BeResult for crate::TrackedResult<T> {
+    type Err = crate::Report;
+    type Ok = T;
+
+    fn __be_into_std(self) -> std::result::Result<T, crate::Report> {
+        self.into_std()
+    }
+}
+
+#[cfg(feature = "tracked")]
+impl<'a, T> __BeResult for &'a crate::TrackedResult<T> {
+    type Err = &'a crate::Report;
+    type Ok = &'a T;
+
+    fn __be_into_std(self) -> std::result::Result<&'a T, &'a crate::Report> {
+        self.as_ref().into_std()
+    }
+}
+
+#[cfg(feature = "tracked")]
+impl<'a, T> __BeResult for &'a mut crate::TrackedResult<T> {
+    type Err = &'a mut crate::Report;
+    type Ok = &'a mut T;
+
+    fn __be_into_std(self) -> std::result::Result<&'a mut T, &'a mut crate::Report> {
+        self.as_mut().into_std()
+    }
+}
 
 /// Build the failure report: the caller's message when there is one, the
 /// macro's own description of the failed check otherwise.
@@ -124,7 +209,7 @@ macro_rules! __be_cmp {
         match (&$left, &$right) {
             (__be_left, __be_right) => {
                 if *__be_left $op *__be_right {
-                    ::core::result::Result::Ok(())
+                    $crate::Result::Ok(())
                 } else {
                     // Both operands are Debug-formatted into the default message
                     // and into the span. Assert the bound here so enabling
@@ -132,7 +217,7 @@ macro_rules! __be_cmp {
                     fn __be_assert_debug<T: ?Sized + ::core::fmt::Debug>(_: &T) {}
                     __be_assert_debug(__be_left);
                     __be_assert_debug(__be_right);
-                    ::core::result::Result::Err($crate::__be_cmp_report!(
+                    $crate::Result::Err($crate::__be_cmp_report!(
                         $name,
                         __be_left,
                         __be_right,
@@ -154,6 +239,7 @@ macro_rules! __be_cmp {
 /// `Ok(v)` when the option is `Some(v)`, moving the value out.
 ///
 /// ```
+/// # #[cfg(feature = "tracked")] use erris::tracked::Ok;
 /// use erris::be;
 ///
 /// fn parse(raw: Option<&str>) -> erris::Result<u32> {
@@ -169,8 +255,8 @@ macro_rules! __be_cmp {
 macro_rules! __be_some {
     ($e:expr $(, $($arg:tt)*)?) => {
         match $e {
-            ::core::option::Option::Some(__be_value) => ::core::result::Result::Ok(__be_value),
-            ::core::option::Option::None => ::core::result::Result::Err($crate::__be_report!(
+            ::core::option::Option::Some(__be_value) => $crate::Result::Ok(__be_value),
+            ::core::option::Option::None => $crate::Result::Err($crate::__be_report!(
                 concat!("expected Some: ", stringify!($e)) $(, $($arg)*)?
             )),
         }
@@ -194,8 +280,8 @@ macro_rules! __be_some {
 macro_rules! __be_some_ref {
     ($e:expr $(, $($arg:tt)*)?) => {
         match &$e {
-            ::core::option::Option::Some(__be_value) => ::core::result::Result::Ok(__be_value),
-            ::core::option::Option::None => ::core::result::Result::Err($crate::__be_report!(
+            ::core::option::Option::Some(__be_value) => $crate::Result::Ok(__be_value),
+            ::core::option::Option::None => $crate::Result::Err($crate::__be_report!(
                 concat!("expected Some: ", stringify!($e)) $(, $($arg)*)?
             )),
         }
@@ -218,10 +304,10 @@ macro_rules! __be_some_ref {
 macro_rules! __be_none {
     ($e:expr $(, $($arg:tt)*)?) => {
         match &$e {
-            ::core::option::Option::Some(_) => ::core::result::Result::Err($crate::__be_report!(
+            ::core::option::Option::Some(_) => $crate::Result::Err($crate::__be_report!(
                 concat!("expected None: ", stringify!($e)) $(, $($arg)*)?
             )),
-            ::core::option::Option::None => ::core::result::Result::Ok(()),
+            ::core::option::Option::None => $crate::Result::Ok(()),
         }
     };
 }
@@ -244,9 +330,9 @@ macro_rules! __be_none {
 #[macro_export]
 macro_rules! __be_ok {
     ($e:expr $(, $($arg:tt)*)?) => {
-        match $e {
-            ::core::result::Result::Ok(__be_value) => ::core::result::Result::Ok(__be_value),
-            ::core::result::Result::Err(__be_error) => ::core::result::Result::Err(
+        match $crate::be::__BeResult::__be_into_std($e) {
+            ::core::result::Result::Ok(__be_value) => $crate::Result::Ok(__be_value),
+            ::core::result::Result::Err(__be_error) => $crate::Result::Err(
                 $crate::report!(__be_error).with_err($crate::__be_report!(
                     concat!("expected Ok: ", stringify!($e)) $(, $($arg)*)?
                 )),
@@ -267,9 +353,9 @@ macro_rules! __be_ok {
 #[macro_export]
 macro_rules! __be_err {
     ($e:expr $(, $($arg:tt)*)?) => {
-        match $e {
-            ::core::result::Result::Err(__be_error) => ::core::result::Result::Ok(__be_error),
-            ::core::result::Result::Ok(_) => ::core::result::Result::Err($crate::__be_report!(
+        match $crate::be::__BeResult::__be_into_std($e) {
+            ::core::result::Result::Err(__be_error) => $crate::Result::Ok(__be_error),
+            ::core::result::Result::Ok(_) => $crate::Result::Err($crate::__be_report!(
                 concat!("expected Err: ", stringify!($e)) $(, $($arg)*)?
             )),
         }
@@ -292,9 +378,9 @@ macro_rules! __be_err {
 macro_rules! __be_sure {
     ($e:expr $(, $($arg:tt)*)?) => {
         if $e {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!("expected true: ", stringify!($e)) $(, $($arg)*)?
             ))
         }
@@ -315,9 +401,9 @@ macro_rules! __be_empty {
     ($e:expr $(, $($arg:tt)*)?) => {{
         let __be_value = &$e;
         if __be_value.is_empty() {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!("expected empty: ", stringify!($e)) $(, $($arg)*)?
             ))
         }
@@ -338,9 +424,9 @@ macro_rules! __be_non_empty {
     ($e:expr $(, $($arg:tt)*)?) => {{
         let __be_value = &$e;
         if !__be_value.is_empty() {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!("expected non empty: ", stringify!($e)) $(, $($arg)*)?
             ))
         }
@@ -361,9 +447,9 @@ macro_rules! __be_zero {
     ($e:expr $(, $($arg:tt)*)?) => {{
         let __be_value = &$e;
         if *__be_value == 0 {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!("expected zero: ", stringify!($e)) $(, $($arg)*)?
             ))
         }
@@ -384,9 +470,9 @@ macro_rules! __be_non_zero {
     ($e:expr $(, $($arg:tt)*)?) => {{
         let __be_value = &$e;
         if *__be_value != 0 {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!("expected non zero: ", stringify!($e)) $(, $($arg)*)?
             ))
         }
@@ -474,8 +560,8 @@ macro_rules! __be_ge {
 macro_rules! __be_matches {
     ($e:expr, $pat:pat $(if $guard:expr)? $(, $($arg:tt)*)?) => {
         match &$e {
-            $pat $(if $guard)? => ::core::result::Result::Ok(()),
-            _ => ::core::result::Result::Err($crate::__be_report!(
+            $pat $(if $guard)? => $crate::Result::Ok(()),
+            _ => $crate::Result::Err($crate::__be_report!(
                 concat!("expected ", stringify!($e), " to match ", stringify!($pat))
                 $(, $($arg)*)?
             )),
@@ -499,9 +585,9 @@ macro_rules! __be_contains {
     ($haystack:expr, $needle:expr $(, $($arg:tt)*)?) => {{
         let __be_haystack = &$haystack;
         if __be_haystack.contains($needle) {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!(
                     "expected ", stringify!($haystack), " to contain ", stringify!($needle),
                 )
@@ -529,9 +615,9 @@ macro_rules! __be_len {
         let __be_actual = (&$e).len();
         let __be_expected = $len;
         if __be_actual == __be_expected {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 format!(
                     concat!(
                         "expected ", stringify!($e), " to have length {}, got {}",
@@ -562,9 +648,9 @@ macro_rules! __be_in_range {
     ($e:expr, $range:expr $(, $($arg:tt)*)?) => {{
         let __be_value = &$e;
         if $range.contains(__be_value) {
-            ::core::result::Result::Ok(())
+            $crate::Result::Ok(())
         } else {
-            ::core::result::Result::Err($crate::__be_report!(
+            $crate::Result::Err($crate::__be_report!(
                 concat!("expected ", stringify!($e), " in ", stringify!($range))
                 $(, $($arg)*)?
             ))

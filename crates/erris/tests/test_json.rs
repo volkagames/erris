@@ -30,7 +30,18 @@ fn json_snapshot_of_deeply_nested_error() {
             "io: disk gone"
         ]
     );
-    assert_eq!(json.location.len(), 6, "one location per tracked node");
+    // `ctx.with_report(report!(..))` builds two reports on one line, in different
+    // columns: `keep-duplicate-location` lists both, the default collapses them.
+    let expected = if cfg!(feature = "keep-duplicate-location") {
+        7
+    } else {
+        6
+    };
+    assert_eq!(
+        json.location.len(),
+        expected,
+        "one location per tracked node"
+    );
     assert!(json.location.iter().all(|l| l.contains("test_json.rs")));
     assert!(json.spantrace.is_empty(), "no subscriber installed");
 }
@@ -206,7 +217,10 @@ rusty_fork_test! {
         {
             let json_location = json_object.get("location").expect("expect location field");
             let json_location = json_location.as_array().expect("expect location is a array");
-            assert!(json_location.len() == 5);
+            // `err.with_report(erris::report!(..))` builds two reports on one line, in
+            // different columns: `keep-duplicate-location` lists both.
+            let expected = if cfg!(feature = "keep-duplicate-location") { 6 } else { 5 };
+            assert_eq!(json_location.len(), expected);
         }
         {
             let json_spantrace = json_object.get("spantrace").expect("expect spantrace field");

@@ -21,6 +21,8 @@
 //! # Example
 //!
 //! ```
+//! # #[cfg(feature = "tracked")] use erris::tracked::Ok;
+//! # #[cfg(feature = "tracked_prelude")] use std::result::Result::{self, Err};
 //! use erris::prelude::*;
 //! use erris::report;
 //!
@@ -56,6 +58,15 @@
 //!   [`JsonVisitor::record_json`](tracing_fields::JsonVisitor::record_json).
 //! - `keep-duplicate-location`: keep consecutive locations that differ only by column; by default
 //!   they collapse into one entry per file and line.
+//! - `tracked` (nightly only): [`Result`] becomes `TrackedResult`, whose `?` records a location on
+//!   every hop. Not additive: it changes the type for every crate in the build.
+//! - `tracked_prelude` (implies `tracked`): [`prelude`] also exports the tracking `Result`, `Ok`
+//!   and `Err`, replacing std's in every module that globs it.
+#![cfg_attr(
+    any(feature = "tracked", docsrs),
+    feature(try_trait_v2, try_trait_v2_residual)
+)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     bad_style,
     dead_code,
@@ -97,7 +108,22 @@ mod report_to_json;
 #[cfg(feature = "to_json")]
 pub use report_to_json::*;
 
+// docs.rs documents the module without the feature, so that `Result` below
+// stays the std alias there.
+#[cfg(any(feature = "tracked", docsrs))]
+#[cfg_attr(docsrs, doc(cfg(feature = "tracked")))]
+pub mod tracked;
+
+#[cfg(any(feature = "tracked", docsrs))]
+#[cfg_attr(docsrs, doc(cfg(feature = "tracked")))]
+pub use tracked::TrackedResult;
+
+#[cfg(not(feature = "tracked"))]
 pub type Result<T, E = Report> = std::result::Result<T, E>;
+
+// With `tracked` on, the crate's `Result` is the tracking one.
+#[cfg(feature = "tracked")]
+pub use tracked::TrackedResult as Result;
 
 // The tracing_fields layer stores span fields as `serde_json::Map`, so it needs
 // serde_json — which only the `to_json` feature pulls in. It is consumed solely
@@ -117,6 +143,12 @@ pub use tracing as __tracing;
 pub use tracing_error::SpanTrace;
 
 pub mod prelude {
+    // A glob import outranks the std prelude, so with `tracked_prelude` every
+    // module that globs this one gets the tracking `Result`, `Ok` and `Err`.
+    #[cfg(feature = "tracked_prelude")]
+    pub use crate::Result;
+    #[cfg(feature = "tracked_prelude")]
+    pub use crate::tracked::{Err, Ok};
     pub use crate::{BoxIntoReport, OkOrReport, Report, TrackReport, WrapBoxReport, WrapReport};
 }
 
