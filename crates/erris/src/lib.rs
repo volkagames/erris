@@ -72,7 +72,6 @@
     dead_code,
     improper_ctypes,
     missing_debug_implementations,
-    no_mangle_generic_items,
     non_shorthand_field_patterns,
     overflowing_literals,
     path_statements,
