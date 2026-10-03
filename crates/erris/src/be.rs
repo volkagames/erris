@@ -561,33 +561,35 @@ macro_rules! __be_ge {
     };
 }
 
-/// `Ok(())` when the value matches the pattern. Takes the same pattern and
-/// optional guard as [`std::matches!`].
+/// `Ok(())` when the value matches the pattern. Matches exactly as
+/// [`std::matches!`] does, guard included.
 ///
 /// ```
 /// use erris::be;
 ///
 /// let state = Some(3);
-/// assert!(be::matches!(state, Some(n) if *n > 2).is_ok());
+/// assert!(be::matches!(state, Some(n) if n > 2).is_ok());
 /// assert!(be::matches!(state, None).is_err());
+///
+/// let cmd: &str = "start";
+/// assert!(be::matches!(cmd, "start" | "stop").is_ok());
 /// ```
 ///
-/// Unlike `std::matches!`, the value is matched by reference, so it is never
-/// moved and bindings inside the pattern are references. A value that is
-/// already a reference gets one more level, which literal patterns do not
-/// see through — dereference it first:
+/// The value is matched by value, so a pattern that binds a non-`Copy` part
+/// moves it out. Pass a reference to keep the value and bind references:
 ///
 /// ```
 /// use erris::be;
 ///
-/// let cmd: &str = "start";
-/// assert!(be::matches!(*cmd, "start" | "stop").is_ok());
+/// let name = Some(String::from("erris"));
+/// assert!(be::matches!(&name, Some(n) if n.starts_with("err")).is_ok());
+/// assert!(name.is_some()); // still ours
 /// ```
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __be_matches {
     ($e:expr, $pat:pat $(if $guard:expr)? $(, $($arg:tt)*)?) => {
-        match &$e {
+        match $e {
             $pat $(if $guard)? => $crate::Result::Ok(()),
             _ => $crate::Result::Err($crate::__be_report!(
                 ::core::concat!("expected ", ::core::stringify!($e), " to match ", ::core::stringify!($pat))

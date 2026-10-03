@@ -110,9 +110,9 @@ fn check(v: Option<u32>) -> erris::Result<u32> {
 A macro that narrows a type hands back the narrowed value, a plain predicate
 hands back `()`; the checked expression is evaluated exactly once. `be::ok!`
 keeps the original error as the cause of the report instead of dropping it.
-`be::matches!` matches by reference: dereference a `&str` before matching it
-against string literals (`be::matches!(*cmd, "start" | "stop")`). Call the
-macros as `be::name!` — a glob `use erris::be::*` clashes with std's `matches!`.
+`be::matches!` matches by value, exactly like `std::matches!`; pass `&v` to keep
+the value and bind references. Call the macros as `be::name!` — a glob
+`use erris::be::*` clashes with std's `matches!`.
 
 Every macro takes an optional message — a literal, a format string with
 arguments, or any expression `report!` accepts. Without one the report names the
@@ -178,10 +178,8 @@ Before turning it on:
 ## Features
 
 - `spantrace` _(default)_ — capture a `tracing` span trace per report link.
-- `to_json` _(default)_ (implies `spantrace`) — `Report::to_json` plus the
-  `tracing_fields` span-field layer. On by default for compatibility with 2.1;
-  the next major release drops it from the defaults, so if you use it, enable it
-  explicitly.
+- `to_json` (implies `spantrace`) — `Report::to_json` plus the `tracing_fields`
+  span-field layer.
 - `backtrace` — capture a `std::backtrace::Backtrace`.
 - `serde_json_value` (implies `to_json`) — inject a pre-serialised
   `serde_json::Value` into span fields via `JsonVisitor::record_json`.
@@ -192,12 +190,22 @@ Before turning it on:
   [Tracked results](#tracked-results-nightly).
 - `tracked_prelude` (implies `tracked`) — `erris::prelude` also exports the
   tracking `Result`, `Ok` and `Err`.
-- `valuable` — deprecated, does nothing. Kept so that builds from 2.1 that name
-  it keep resolving; the next major release removes it.
 
 Minimum supported Rust version: 1.86; `tracked` needs a nightly toolchain.
 
 Full API documentation: [docs.rs/erris](https://docs.rs/erris).
+
+## Upgrading from 2.x
+
+- **`be::matches!` matches by value**, like `std::matches!`. Drop the `*` on
+  `Copy` bindings in guards (`Some(n) if *n > 2` becomes `Some(n) if n > 2`) and
+  on `&str` values (`be::matches!(*cmd, "a")` becomes `be::matches!(cmd, "a")`).
+  Where the pattern binds part of a value that has to stay in place, pass a
+  reference: `be::matches!(&state, Some(s) if s.is_empty())`.
+- **`be::ok!` adds no link for a `Report` error.** The error is now the cause as
+  is, as with `wrap_report`, so its chain is one link shorter than in 2.x.
+- **Features, as since 2.2.0:** `to_json` is not a default — enable it if you
+  call `Report::to_json`; `valuable` is gone.
 
 ## License
 

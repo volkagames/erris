@@ -24,7 +24,7 @@ impl<'a> JsonVisitor<'a> {
     /// Enable via the `serde_json_value` feature:
     /// ```toml
     /// [dependencies]
-    /// erris = { version = "2", features = ["serde_json_value"] }
+    /// erris = { version = "3", features = ["serde_json_value"] }
     /// ```
     #[cfg(feature = "serde_json_value")]
     pub fn record_json(&mut self, field: &Field, value: impl Into<serde_json::Value>) {

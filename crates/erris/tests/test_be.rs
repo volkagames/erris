@@ -198,8 +198,8 @@ fn comparisons_work_on_owned_values() {
 #[test]
 fn matches_a_pattern_with_a_guard() {
     let state = Some(3);
-    assert!(be::matches!(state, Some(n) if *n > 2).is_ok());
-    assert!(be::matches!(state, Some(n) if *n > 5).is_err());
+    assert!(be::matches!(state, Some(n) if n > 2).is_ok());
+    assert!(be::matches!(state, Some(n) if n > 5).is_err());
     assert_eq!(
         be::matches!(state, None).unwrap_err().to_string(),
         "expected state to match None",
@@ -418,8 +418,24 @@ fn ok_accepts_boxed_and_string_errors() {
 }
 
 #[test]
-fn matches_a_dereferenced_str() {
+fn matches_by_value_like_std() {
+    // A `&str` meets string literals directly, as in `std::matches!`.
     let cmd: &str = "start";
-    assert!(be::matches!(*cmd, "start" | "stop").is_ok());
-    assert!(be::matches!(*cmd, "stop").is_err());
+    assert!(be::matches!(cmd, "start" | "stop").is_ok());
+    assert!(be::matches!(cmd, "stop").is_err());
+
+    // A pattern without bindings moves nothing out.
+    let name = Some(String::from("erris"));
+    assert!(be::matches!(name, Some(_)).is_ok());
+
+    // Through a reference the value stays put and the bindings are references.
+    assert!(be::matches!(&name, Some(n) if n.starts_with("err")).is_ok());
+    assert_eq!(name.as_deref(), Some("erris"));
+
+    // A place behind a shared reference works the same way.
+    struct Holder {
+        name: Option<String>,
+    }
+    let holder = &Holder { name: None };
+    assert!(be::matches!(&holder.name, Some(n) if n.is_empty()).is_err());
 }
