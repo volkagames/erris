@@ -234,19 +234,23 @@ fn success_is_not_tracked() {
 }
 
 #[test]
-fn map_and_map_err_stay_tracked() {
+fn map_stays_tracked_map_err_is_std() {
     let doubled: Result<u32> = Ok(2).map(|n| n * 2);
     assert_eq!(doubled.ok(), Some(4));
 
-    let with_context: Result<u32> = leaf().map_err(|report| report.with_message("context"));
-    assert_eq!(with_context.unwrap_err().to_string(), "context");
+    // Like std's `map_err`: the closure's error type, in a std `Result`.
+    let foreign: StdResult<u32, String> = leaf().map_err(|report| report.to_string());
+    assert_eq!(foreign, StdResult::Err("boom".to_owned()));
 
-    // A foreign error returned by the closure is converted back into a report.
-    const MAPPED: u32 = line!() + 1;
-    let replaced: Result<u32> = leaf().map_err(|_| std::io::Error::other("io"));
-    let report = replaced.unwrap_err();
-    assert_eq!(report.to_string(), "io");
-    assert_eq!(lines(&report), [MAPPED]);
+    // A `?` on it records the hop again, here into a tracked result.
+    const HOP: u32 = line!() + 2;
+    fn hop() -> Result<u32> {
+        let n = leaf().map_err(|report| report.with_message("context"))?;
+        Ok(n)
+    }
+    let report = hop().unwrap_err();
+    assert_eq!(report.to_string(), "context");
+    assert_eq!(lines(&report)[0], HOP);
 }
 
 #[test]

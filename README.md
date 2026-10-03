@@ -190,7 +190,6 @@ Before turning it on:
 | `E0308` expected `Result`, found `TrackedResult` (or back) inside a derive's expansion | a derive emits bare `Ok`/`Err` (`strum::EnumString`, `enum_dispatch`, …) in a module that globs the prelude | move the type to a module without the glob and re-export it |
 | `E0308` in a `fmt::Display`, `FromStr`, serde or framework impl | std result in a module that globs the prelude | `std::result::Result::Ok(..)` / `Err(..)` |
 | `E0599` no method `transpose` on `Option<TrackedResult<_>>` | the glob is missing | `use erris::prelude::*;` (brings `OptionTranspose`) |
-| `map_err` into a foreign error type yields a `Report` | `TrackedResult::map_err` keeps the result tracked | `.into_std().map_err(..)` |
 | a std API wants `Result` (`try_join_all`, diesel `transaction`, `OnceCell::get_or_try_init`) | it is bounded on std `Result` | `.into_std()` |
 | `erris::Result<T, E>` does not compile | the error is fixed to `Report` | `std::result::Result<T, E>` |
 
@@ -233,6 +232,10 @@ Full API documentation: [docs.rs/erris](https://docs.rs/erris).
   prelude is std's.
 - **`TrackedResult::track` is no longer deprecated.** It is the way to record a
   hop handed on without `?`.
+- **`TrackedResult::map_err` works like std's**: it returns a std
+  `Result<T, F>` with the closure's error type, so mapping into a foreign
+  error reads the same in both modes. A `?` on it still records the hop; to add
+  context and stay tracked, use `wrap_report`.
 - **New:** `OptionTranspose` (`.transpose()` on `Option<TrackedResult>`) and
   `IntoStd` (`.into_std()` on a std `Result<T, Report>`), both in the prelude.
 

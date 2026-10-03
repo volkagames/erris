@@ -306,17 +306,18 @@ impl<T> TrackedResult<T> {
         }
     }
 
-    /// Whatever the closure returns is converted back into a `Report`, so the
-    /// result stays tracked.
-    #[track_caller]
-    pub fn map_err<E, F>(self, f: F) -> TrackedResult<T>
+    /// Like std's: the error becomes whatever the closure returns, so the
+    /// result is a std `Result<T, F>` — `res.map_err(|e| Foreign::from(e))`
+    /// reads the same with and without `tracked`. A `?` on it still records
+    /// the hop. To add context and stay tracked, use
+    /// [`wrap_report`](Self::wrap_report) instead.
+    pub fn map_err<F, O>(self, op: O) -> StdResult<T, F>
     where
-        E: IntoReport,
-        F: FnOnce(Report) -> E,
+        O: FnOnce(Report) -> F,
     {
         match self {
-            Ok(t) => Ok(t),
-            Err(e) => Err(f(e).into_report()),
+            Ok(t) => StdResult::Ok(t),
+            Err(e) => StdResult::Err(op(e)),
         }
     }
 
