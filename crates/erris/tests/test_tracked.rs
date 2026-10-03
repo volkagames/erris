@@ -128,9 +128,8 @@ fn question_mark_records_its_own_line_once() {
         with_same_line_frame(WRAP, &[WRAP, WRAP, LEAF])
     );
 
-    const TRACK: u32 = line!() + 3;
+    const TRACK: u32 = line!() + 2;
     fn tracked_by_hand() -> Result<u32> {
-        #[allow(deprecated)]
         let n = leaf().track()?;
         Ok(n)
     }
@@ -274,8 +273,8 @@ fn crate_root_result_is_the_tracked_type() {
     assert_eq!(by_path.ok(), Some(1));
 }
 
-/// Without `tracked_prelude` the prelude leaves std's names alone.
-#[cfg(not(feature = "tracked_prelude"))]
+/// Without `tracked` the prelude's `Ok`/`Err` are std's own.
+#[cfg(not(feature = "tracked"))]
 mod prelude_alone {
     use erris::prelude::*;
 
@@ -294,9 +293,8 @@ fn erris_extensions_stay_tracked() {
     let lazy: Result<u32> = leaf().wrap_report_with(|| report!("lazy context"));
     assert_eq!(lazy.unwrap_err().to_string(), "lazy context");
 
-    // Deprecated because `?` already tracks; the frame it adds is still pinned here.
-    const TRACK: u32 = line!() + 2;
-    #[allow(deprecated)]
+    // A result handed on without `?` gets its frame from `track`.
+    const TRACK: u32 = line!() + 1;
     let tracked: Result<u32> = leaf().track();
     assert_eq!(lines(&tracked.unwrap_err()), [TRACK, LEAF]);
 }
@@ -364,10 +362,7 @@ fn erris_apis_work_in_a_tracked_function() {
     assert_eq!(wrapped("7").ok(), Some(7));
     assert_eq!(wrapped("x").unwrap_err().to_string(), "not a number");
 
-    #[allow(deprecated)]
     fn tracked(text: &str) -> Result<u32> {
-        // `track` on a std `Result` is not the deprecated one, but what it
-        // returns is, so the chain below warns.
         text.parse::<u32>().track().track()
     }
     assert!(tracked("x").is_err());

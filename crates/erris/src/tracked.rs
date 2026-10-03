@@ -355,28 +355,23 @@ impl<T> TrackedResult<T> {
 /// erris's own result extensions ([`TrackReport`](crate::TrackReport),
 /// [`WrapReport`](crate::WrapReport)), returning a `TrackedResult`.
 impl<T> TrackedResult<T> {
-    /// Add a location frame by hand. `?` records the hop itself, so this is
-    /// needed only where a result is handed on without `?`; before a `?` on the
-    /// same line it adds nothing. Kept so code moved over from std `Result`
-    /// still compiles; the deprecation points at the calls to review.
+    /// Add a location frame by hand, where a result is handed on without `?`:
+    /// a tail call or a `return`. Before a `?` it adds nothing, since `?` records
+    /// the hop itself; `.track()?` left over from std `Result` code is harmless
+    /// and can be dropped.
     ///
-    /// ```compile_fail
-    /// #![deny(deprecated)]
+    /// ```
     /// use erris::tracked::{Ok, Result};
     ///
     /// fn leaf() -> Result<u32> {
     ///     Ok(1)
     /// }
     ///
-    /// fn hop() -> Result<u32> {
-    ///     let n = leaf().track()?; // `?` alone records this hop
-    ///     Ok(n)
+    /// fn tail() -> Result<u32> {
+    ///     leaf().track() // no `?` here, so the hop needs the frame by hand
     /// }
+    /// # assert_eq!(tail().ok(), Some(1));
     /// ```
-    #[deprecated(
-        note = "usually redundant: `?` on a `TrackedResult` records the hop itself; keep \
-                `.track()` only where the result is handed on without `?`"
-    )]
     #[track_caller]
     pub fn track(self) -> TrackedResult<T> {
         match self {

@@ -173,3 +173,18 @@ impl<T> WrapBoxReport<T> for Result<T, Box<dyn std::error::Error + Send + Sync +
         }
     }
 }
+
+/// `into_std()` on a std `Result<T, Report>`: the identity. With `tracked` on,
+/// `TrackedResult::into_std` is the inherent method of the same name, so
+/// `res.into_std().map_err(..)` — into a foreign error type, or for an API
+/// bounded on std `Result` such as `try_join_all` — reads the same in both
+/// modes. Exported from [`prelude`](crate::prelude).
+pub trait IntoStd<T> {
+    fn into_std(self) -> Result<T, Report>;
+}
+
+impl<T> IntoStd<T> for Result<T, Report> {
+    fn into_std(self) -> Result<T, Report> {
+        self
+    }
+}

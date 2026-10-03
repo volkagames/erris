@@ -28,10 +28,9 @@ backtrace = []
 keep-duplicate-location = []
 to_json = ["dep:serde_json", "dep:serde", "spantrace"]
 serde_json_value = ["to_json"]
-# Nightly only: needs `try_trait_v2`. Turns `erris::Result` into `TrackedResult`.
+# Nightly only: needs `try_trait_v2`. Turns `erris::Result` into `TrackedResult`,
+# and the `Ok`/`Err` of `erris::prelude` into its variants.
 tracked = []
-# Also exports the tracking `Result`, `Ok` and `Err` from `erris::prelude`.
-tracked_prelude = ["tracked"]
 
 [dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }

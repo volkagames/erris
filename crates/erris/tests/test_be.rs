@@ -393,7 +393,7 @@ fn a_local_format_macro_does_not_leak_into_the_expansion() {
 fn ok_adds_no_link_for_a_report_error() {
     use erris::prelude::*;
 
-    fn failed() -> Result<(), erris::Report> {
+    fn failed() -> erris::Result<()> {
         Err(erris::report!("inner"))
     }
 

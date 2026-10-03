@@ -135,31 +135,30 @@ hop needs an explicit `.track()?`. The `tracked` feature turns `erris::Result`
 into `TrackedResult`, whose `?` records the location itself:
 
 ```rust
-use erris::prelude::*; // with `tracked_prelude`: the tracking `Result`, `Ok`, `Err`
+use erris::prelude::*; // `Ok`/`Err`: std's by default, the tracking ones with `tracked`
 
-fn parse(s: &str) -> Result<u32> {
+fn parse(s: &str) -> erris::Result<u32> {
     let n: u32 = s.parse()?; // std error -> Report, located here
     Ok(n)
 }
 
-fn double(s: &str) -> Result<u32> {
+fn double(s: &str) -> erris::Result<u32> {
     let n = parse(s)?; // located here too, with no `.track()`
     Ok(n * 2)
 }
 ```
 
-`TrackedResult` mirrors the methods of std `Result`, and its error is always a
-`Report`. For `Option<TrackedResult<T>>`, `erris::prelude` brings in
-`OptionTranspose`, so `opt.map(load).transpose()` compiles in both modes. A
-function whose signature a foreign trait dictates — a web handler, a `FromStr`
-impl — keeps returning std `Result`; `?` converts in both directions and records
-the hop either way.
+The same code builds without `tracked`, with `.track()` doing the job by hand,
+so turning the feature on or off changes no source.
 
-Each hop is recorded once: a report already located on the `?` line — by
-`wrap_report`, a `be` macro, or the error conversion itself — gets no second
-frame. `wrap_report`, `ok_or_report`, `track` and the `be` macros return
-`erris::Result`, so with `tracked` on they return a `TrackedResult`, and
-`be::ok!` / `be::err!` accept one.
+`TrackedResult` mirrors the methods of std `Result`, and its error is always a
+`Report`. A function whose signature a foreign trait dictates — a web handler, a
+`FromStr` impl — keeps returning std `Result`; `?` converts in both directions
+and records the hop either way. Each hop is recorded once: a report already
+located on the `?` line — by `wrap_report`, a `be` macro, or the error
+conversion itself — gets no second frame. `wrap_report`, `ok_or_report`,
+`track` and the `be` macros return `erris::Result`, so with `tracked` on they
+return a `TrackedResult`, and `be::ok!` / `be::err!` accept one.
 
 Before turning it on:
 
@@ -167,15 +166,46 @@ Before turning it on:
   with the nightlies of 2026-07-30 (1.99) and 2026-09-25 (1.100).
 - **It is not additive.** Cargo unifies features across the build, so `tracked`
   changes `erris::Result` for every crate that depends on erris, not only yours.
-  Enable it in an application, not in a library.
-- **`Ok` and `Err` must be the tracking ones.** std's `Ok(v)` is not a
-  `TrackedResult`. Either import `erris::tracked::{Ok, Err}`, or enable
-  `tracked_prelude` and glob `erris::prelude`.
-- **`tracked_prelude` replaces std's names in every module that globs the
-  prelude.** A std result in such a module has to be spelled
-  `std::result::Result<T, E>`, with `std::result::Result::Ok` and `Err`.
+  Enable it in an application, never in a library.
+- **`Ok` and `Err` come from the prelude.** A module that globs `erris::prelude`
+  gets the tracking `Ok`/`Err` with `tracked` and std's without it. A bare
+  `Result<T, E>` stays std's; an erris result is `erris::Result<T>`.
 - **`erris::Result<T, E>` with an error type is a compile error.** The error is
   fixed to `Report`.
+
+### Enabling `tracked` in an application
+
+1. Pin a nightly toolchain (`rust-toolchain.toml`) and enable the feature on the
+   application crate only: `erris = { version = "3.1", features = ["tracked"] }`.
+   Crates that ship erris-based traits may need their own switch (treat:
+   `features = ["tracked"]`).
+2. Glob `use erris::prelude::*;` in every module that returns `erris::Result`.
+3. Drop `.track()` before `?` — it adds nothing there:
+   `perl -pi -e 's/\.track\(\)\?/?/g' $(git ls-files '*.rs')`. Keep it where a
+   result is handed on without `?` (a tail call, a `return`).
+4. Fix what the compiler reports:
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `E0308` expected `Result`, found `TrackedResult` (or back) inside a derive's expansion | a derive emits bare `Ok`/`Err` (`strum::EnumString`, `enum_dispatch`, …) in a module that globs the prelude | move the type to a module without the glob and re-export it |
+| `E0308` in a `fmt::Display`, `FromStr`, serde or framework impl | std result in a module that globs the prelude | `std::result::Result::Ok(..)` / `Err(..)` |
+| `E0599` no method `transpose` on `Option<TrackedResult<_>>` | the glob is missing | `use erris::prelude::*;` (brings `OptionTranspose`) |
+| `map_err` into a foreign error type yields a `Report` | `TrackedResult::map_err` keeps the result tracked | `.into_std().map_err(..)` |
+| a std API wants `Result` (`try_join_all`, diesel `transaction`, `OnceCell::get_or_try_init`) | it is bounded on std `Result` | `.into_std()` |
+| `erris::Result<T, E>` does not compile | the error is fixed to `Report` | `std::result::Result<T, E>` |
+
+### Libraries
+
+A library never enables `tracked`, but an application may turn it on for the
+whole build, so a library that returns `erris::Result` compiles in both modes.
+Write it the way the table above describes — the prelude glob, `erris::Result<T>`,
+spelled-out std results, `into_std()` at std boundaries — and check both modes in
+CI:
+
+```sh
+cargo check --all-targets
+cargo +nightly check --all-targets --features erris/tracked
+```
 
 ## Features
 
@@ -188,14 +218,23 @@ Before turning it on:
 - `keep-duplicate-location` — keep consecutive locations that differ only by
   column; by default they collapse into one entry per file and line.
 - `tracked` _(nightly only)_ — `erris::Result` becomes `TrackedResult`, whose `?`
-  records a location on every hop. See
-  [Tracked results](#tracked-results-nightly).
-- `tracked_prelude` (implies `tracked`) — `erris::prelude` also exports the
-  tracking `Result`, `Ok` and `Err`.
+  records a location on every hop, and the prelude's `Ok`/`Err` become its
+  variants. See [Tracked results](#tracked-results-nightly).
 
 Minimum supported Rust version: 1.86; `tracked` needs a nightly toolchain.
 
 Full API documentation: [docs.rs/erris](https://docs.rs/erris).
+
+## Upgrading from 3.0
+
+- **The prelude always exports `Ok`/`Err`** — std's without `tracked`, so
+  nothing changes there — and no longer exports `Result`: write
+  `erris::Result<T>`, and a bare `Result<T, E>` in a module that globs the
+  prelude is std's.
+- **`TrackedResult::track` is no longer deprecated.** It is the way to record a
+  hop handed on without `?`.
+- **New:** `OptionTranspose` (`.transpose()` on `Option<TrackedResult>`) and
+  `IntoStd` (`.into_std()` on a std `Result<T, Report>`), both in the prelude.
 
 ## Upgrading from 2.x
 

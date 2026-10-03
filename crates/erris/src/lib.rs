@@ -21,8 +21,7 @@
 //! # Example
 //!
 //! ```
-//! # #[cfg(feature = "tracked")] use erris::tracked::Ok;
-//! # #[cfg(feature = "tracked_prelude")] use std::result::Result::{self, Err};
+//! # #[cfg(feature = "tracked")] use std::result::Result::Err;
 //! use erris::prelude::*;
 //! use erris::report;
 //!
@@ -59,9 +58,8 @@
 //! - `keep-duplicate-location`: keep consecutive locations that differ only by column; by default
 //!   they collapse into one entry per file and line.
 //! - `tracked` (nightly only): [`Result`] becomes `TrackedResult`, whose `?` records a location on
-//!   every hop. Not additive: it changes the type for every crate in the build.
-//! - `tracked_prelude` (implies `tracked`): [`prelude`] also exports the tracking `Result`, `Ok`
-//!   and `Err`, replacing std's in every module that globs it.
+//!   every hop, and the `Ok`/`Err` of [`prelude`] become its variants. Not additive: it changes the
+//!   type for every crate in the build.
 #![cfg_attr(
     any(feature = "tracked", docsrs),
     feature(try_trait_v2, try_trait_v2_residual)
@@ -142,17 +140,28 @@ pub use tracing as __tracing;
 pub use tracing_error::SpanTrace;
 
 pub mod prelude {
-    // A glob import outranks the std prelude, so with `tracked_prelude` every
-    // module that globs this one gets the tracking `Result`, `Ok` and `Err`.
-    #[cfg(feature = "tracked_prelude")]
-    pub use crate::Result;
-    #[cfg(feature = "tracked_prelude")]
-    pub use crate::tracked::{Err, Ok};
-    // Not a std name, so plain `tracked` exports it: `.transpose()` on an
-    // `Option<TrackedResult>` then compiles like std's on an `Option<Result>`.
+    // `Ok` and `Err` are always exported, so a module that globs the prelude
+    // reads the same in both modes: std's variants by default, the tracking ones
+    // with `tracked` (a glob import outranks the std prelude). `Result` is not:
+    // a bare `Result<T, E>` keeps meaning std's, an erris result is spelled
+    // `erris::Result<T>`.
+    // `.transpose()` on an `Option<TrackedResult>`, like std's on an
+    // `Option<Result>`.
     #[cfg(feature = "tracked")]
     pub use crate::tracked::OptionTranspose;
-    pub use crate::{BoxIntoReport, OkOrReport, Report, TrackReport, WrapBoxReport, WrapReport};
+    #[cfg(feature = "tracked")]
+    pub use crate::tracked::{Err, Ok};
+    pub use crate::{
+        BoxIntoReport,
+        IntoStd,
+        OkOrReport,
+        Report,
+        TrackReport,
+        WrapBoxReport,
+        WrapReport,
+    };
+    #[cfg(not(feature = "tracked"))]
+    pub use std::result::Result::{Err, Ok};
 }
 
 /// Build a [`Report`] from a message, a format string, an error value, or

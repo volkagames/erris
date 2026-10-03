@@ -43,3 +43,22 @@ fn question_mark_converts_std_error_into_report() {
     let err = wraps().unwrap_err();
     assert_eq!(err.to_string(), "oh no!");
 }
+
+/// `into_std()` reads the same with and without `tracked`: the `IntoStd`
+/// identity on a std result, the inherent method on a `TrackedResult`.
+#[test]
+fn into_std_in_every_mode() {
+    fn load(ok: bool) -> erris::Result<u32> {
+        if ok {
+            erris::Result::Ok(1)
+        } else {
+            erris::Result::Err(erris::report!("boom"))
+        }
+    }
+
+    let ok: std::result::Result<u32, String> = load(true).into_std().map_err(|e| e.to_string());
+    assert_eq!(ok, std::result::Result::Ok(1));
+    let failed: std::result::Result<u32, String> =
+        load(false).into_std().map_err(|e| e.to_string());
+    assert_eq!(failed, std::result::Result::Err("boom".to_owned()));
+}

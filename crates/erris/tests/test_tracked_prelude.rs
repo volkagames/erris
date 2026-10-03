@@ -1,7 +1,7 @@
-//! `tracked_prelude`: globbing `erris::prelude` is enough to substitute the
-//! tracking `Result`, `Ok` and `Err` for std's. This file imports nothing else
-//! on purpose.
-#![cfg(feature = "tracked_prelude")]
+//! `tracked`: globbing `erris::prelude` is enough to substitute the tracking
+//! `Ok` and `Err` for std's, while a bare `Result` stays std's. This file
+//! imports nothing else on purpose.
+#![cfg(feature = "tracked")]
 
 use erris::prelude::*;
 
@@ -15,14 +15,14 @@ fn lines(report: &Report) -> Vec<u32> {
 }
 
 const LEAF: u32 = line!() + 2;
-fn leaf() -> Result<u32> {
+fn leaf() -> erris::Result<u32> {
     Err(erris::report!("boom"))
 }
 
 #[test]
 fn prelude_result_tracks_on_question_mark() {
     const HOP: u32 = line!() + 2;
-    fn hop() -> Result<u32> {
+    fn hop() -> erris::Result<u32> {
         let n = leaf()?;
         Ok(n)
     }
@@ -37,4 +37,18 @@ fn prelude_names_are_the_tracked_ones() {
 
     let err: erris::TrackedResult<u32> = leaf();
     assert!(matches!(err, Err(_)));
+}
+
+#[test]
+fn bare_result_stays_std() {
+    // Only `Ok`/`Err` come from the prelude; a std result is still written
+    // `Result<T, E>`, with its variants spelled out.
+    let std: Result<u32, String> = std::result::Result::Ok(1);
+    assert_eq!(std.ok(), Some(1));
+}
+
+#[test]
+fn into_std_hands_off_to_std_apis() {
+    let failed: std::result::Result<u32, String> = leaf().into_std().map_err(|e| e.to_string());
+    assert_eq!(failed, std::result::Result::Err("boom".to_owned()));
 }

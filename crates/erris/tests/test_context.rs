@@ -3,8 +3,8 @@
 
 mod common;
 use common::TestError;
-// Named imports, not the prelude glob: with `tracked_prelude` the glob replaces
-// std's `Result`, `Ok` and `Err`, and these tests are about std results.
+// Named imports, not the prelude glob: with `tracked` the glob replaces
+// std's `Ok` and `Err`, and these tests are about std results.
 use erris::{OkOrReport, Report, TrackReport, WrapBoxReport, WrapReport, report};
 
 #[test]
