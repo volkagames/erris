@@ -55,8 +55,9 @@
 //! effects are safe.
 //!
 //! [`ok!`](crate::be::ok) and [`err!`](crate::be::err) take the result by value.
-//! To check one that has to stay where it is, pass a reference and get
-//! references back:
+//! To check one with `err!` that has to stay where it is, pass a reference and
+//! get references back. `ok!` needs the result by value: its error becomes
+//! the cause of the report, and a report cannot hold a borrowed error.
 //!
 //! ```
 //! use erris::be;
@@ -71,8 +72,14 @@
 //! ```
 //!
 //! The comparison macros require [`Debug`](std::fmt::Debug) on both operands,
-//! like [`assert_eq!`]: the values go into the report, and — with the
-//! `spantrace` feature — into a span recorded alongside it.
+//! like [`assert_eq!`]. The values go into the default message. A caller's own
+//! message replaces it, so then the values reach the report only through the
+//! span the macro enters — which takes the `spantrace` feature *and* a
+//! subscriber with [`tracing_error::ErrorLayer`](https://docs.rs/tracing-error)
+//! installed. Without both, put the values in the message yourself.
+//!
+//! Call the macros through the module path — `be::eq!`, not a glob import:
+//! `use erris::be::*` brings in a `matches!` that clashes with the std one.
 
 #[doc(inline)]
 pub use crate::{
@@ -221,12 +228,16 @@ macro_rules! __be_cmp {
                         $name,
                         __be_left,
                         __be_right,
-                        format!(
-                            concat!(
-                                "expected ", stringify!($left), " ", stringify!($op), " ",
-                                stringify!($right), ", got {:?} and {:?}",
-                            ),
-                            __be_left, __be_right,
+                        // The operands' source text goes in as arguments, never
+                        // into the format string: `{` in a struct literal or a
+                        // string operand would be read as a placeholder.
+                        ::std::format!(
+                            "expected {} {} {}, got {:?} and {:?}",
+                            ::core::stringify!($left),
+                            ::core::stringify!($op),
+                            ::core::stringify!($right),
+                            __be_left,
+                            __be_right,
                         )
                         $(, $($arg)*)?
                     ))
@@ -257,7 +268,7 @@ macro_rules! __be_some {
         match $e {
             ::core::option::Option::Some(__be_value) => $crate::Result::Ok(__be_value),
             ::core::option::Option::None => $crate::Result::Err($crate::__be_report!(
-                concat!("expected Some: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected Some: ", ::core::stringify!($e)) $(, $($arg)*)?
             )),
         }
     };
@@ -282,7 +293,7 @@ macro_rules! __be_some_ref {
         match &$e {
             ::core::option::Option::Some(__be_value) => $crate::Result::Ok(__be_value),
             ::core::option::Option::None => $crate::Result::Err($crate::__be_report!(
-                concat!("expected Some: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected Some: ", ::core::stringify!($e)) $(, $($arg)*)?
             )),
         }
     };
@@ -305,7 +316,7 @@ macro_rules! __be_none {
     ($e:expr $(, $($arg:tt)*)?) => {
         match &$e {
             ::core::option::Option::Some(_) => $crate::Result::Err($crate::__be_report!(
-                concat!("expected None: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected None: ", ::core::stringify!($e)) $(, $($arg)*)?
             )),
             ::core::option::Option::None => $crate::Result::Ok(()),
         }
@@ -313,8 +324,11 @@ macro_rules! __be_none {
 }
 
 /// `Ok(v)` when the result is `Ok(v)`. The error is not thrown away: it becomes
-/// the cause of the reported failure, exactly as
-/// [`wrap_report`](crate::WrapReport::wrap_report) does.
+/// the cause of the reported failure, as with
+/// [`wrap_report`](crate::WrapReport::wrap_report). A [`Report`](crate::Report)
+/// error is kept as is, without an extra link. The error can be anything
+/// [`report!`](crate::report) accepts, so unlike `wrap_report` a `String` or
+/// `&'static str` error works too and becomes a message link.
 ///
 /// ```
 /// use erris::be;
@@ -332,11 +346,13 @@ macro_rules! __be_ok {
     ($e:expr $(, $($arg:tt)*)?) => {
         match $crate::be::__BeResult::__be_into_std($e) {
             ::core::result::Result::Ok(__be_value) => $crate::Result::Ok(__be_value),
-            ::core::result::Result::Err(__be_error) => $crate::Result::Err(
-                $crate::report!(__be_error).with_err($crate::__be_report!(
-                    concat!("expected Ok: ", stringify!($e)) $(, $($arg)*)?
-                )),
-            ),
+            ::core::result::Result::Err(__be_error) => $crate::Result::Err({
+                use $crate::report_kind::*;
+                (&__be_error).report_kind().into_cause(__be_error)
+            }
+            .with_err($crate::__be_report!(
+                ::core::concat!("expected Ok: ", ::core::stringify!($e)) $(, $($arg)*)?
+            ))),
         }
     };
 }
@@ -356,7 +372,7 @@ macro_rules! __be_err {
         match $crate::be::__BeResult::__be_into_std($e) {
             ::core::result::Result::Err(__be_error) => $crate::Result::Ok(__be_error),
             ::core::result::Result::Ok(_) => $crate::Result::Err($crate::__be_report!(
-                concat!("expected Err: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected Err: ", ::core::stringify!($e)) $(, $($arg)*)?
             )),
         }
     };
@@ -381,7 +397,7 @@ macro_rules! __be_sure {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!("expected true: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected true: ", ::core::stringify!($e)) $(, $($arg)*)?
             ))
         }
     };
@@ -404,7 +420,7 @@ macro_rules! __be_empty {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!("expected empty: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected empty: ", ::core::stringify!($e)) $(, $($arg)*)?
             ))
         }
     }};
@@ -427,13 +443,15 @@ macro_rules! __be_non_empty {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!("expected non empty: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected non empty: ", ::core::stringify!($e)) $(, $($arg)*)?
             ))
         }
     }};
 }
 
-/// `Ok(())` when the value equals zero.
+/// `Ok(())` when the value equals zero. The value is compared with the integer
+/// literal `0`, so this works for integers; for floats use
+/// [`sure!`](crate::be::sure).
 ///
 /// ```
 /// use erris::be;
@@ -450,13 +468,14 @@ macro_rules! __be_zero {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!("expected zero: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected zero: ", ::core::stringify!($e)) $(, $($arg)*)?
             ))
         }
     }};
 }
 
-/// `Ok(())` when the value differs from zero.
+/// `Ok(())` when the value differs from zero. Integers only, as with
+/// [`zero!`](crate::be::zero).
 ///
 /// ```
 /// use erris::be;
@@ -473,7 +492,7 @@ macro_rules! __be_non_zero {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!("expected non zero: ", stringify!($e)) $(, $($arg)*)?
+                ::core::concat!("expected non zero: ", ::core::stringify!($e)) $(, $($arg)*)?
             ))
         }
     }};
@@ -542,8 +561,8 @@ macro_rules! __be_ge {
     };
 }
 
-/// `Ok(())` when the value matches the pattern. Mirrors [`std::matches!`],
-/// guard included.
+/// `Ok(())` when the value matches the pattern. Takes the same pattern and
+/// optional guard as [`std::matches!`].
 ///
 /// ```
 /// use erris::be;
@@ -553,8 +572,17 @@ macro_rules! __be_ge {
 /// assert!(be::matches!(state, None).is_err());
 /// ```
 ///
-/// The value is matched by reference, so bindings inside the pattern are
-/// references too.
+/// Unlike `std::matches!`, the value is matched by reference, so it is never
+/// moved and bindings inside the pattern are references. A value that is
+/// already a reference gets one more level, which literal patterns do not
+/// see through — dereference it first:
+///
+/// ```
+/// use erris::be;
+///
+/// let cmd: &str = "start";
+/// assert!(be::matches!(*cmd, "start" | "stop").is_ok());
+/// ```
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __be_matches {
@@ -562,7 +590,7 @@ macro_rules! __be_matches {
         match &$e {
             $pat $(if $guard)? => $crate::Result::Ok(()),
             _ => $crate::Result::Err($crate::__be_report!(
-                concat!("expected ", stringify!($e), " to match ", stringify!($pat))
+                ::core::concat!("expected ", ::core::stringify!($e), " to match ", ::core::stringify!($pat))
                 $(, $($arg)*)?
             )),
         }
@@ -588,8 +616,8 @@ macro_rules! __be_contains {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!(
-                    "expected ", stringify!($haystack), " to contain ", stringify!($needle),
+                ::core::concat!(
+                    "expected ", ::core::stringify!($haystack), " to contain ", ::core::stringify!($needle),
                 )
                 $(, $($arg)*)?
             ))
@@ -618,11 +646,11 @@ macro_rules! __be_len {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                format!(
-                    concat!(
-                        "expected ", stringify!($e), " to have length {}, got {}",
-                    ),
-                    __be_expected, __be_actual,
+                ::std::format!(
+                    "expected {} to have length {}, got {}",
+                    ::core::stringify!($e),
+                    __be_expected,
+                    __be_actual,
                 )
                 $(, $($arg)*)?
             ))
@@ -651,7 +679,7 @@ macro_rules! __be_in_range {
             $crate::Result::Ok(())
         } else {
             $crate::Result::Err($crate::__be_report!(
-                concat!("expected ", stringify!($e), " in ", stringify!($range))
+                ::core::concat!("expected ", ::core::stringify!($e), " in ", ::core::stringify!($range))
                 $(, $($arg)*)?
             ))
         }

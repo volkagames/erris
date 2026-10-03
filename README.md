@@ -110,6 +110,9 @@ fn check(v: Option<u32>) -> erris::Result<u32> {
 A macro that narrows a type hands back the narrowed value, a plain predicate
 hands back `()`; the checked expression is evaluated exactly once. `be::ok!`
 keeps the original error as the cause of the report instead of dropping it.
+`be::matches!` matches by reference: dereference a `&str` before matching it
+against string literals (`be::matches!(*cmd, "start" | "stop")`). Call the
+macros as `be::name!` — a glob `use erris::be::*` clashes with std's `matches!`.
 
 Every macro takes an optional message — a literal, a format string with
 arguments, or any expression `report!` accepts. Without one the report names the
@@ -119,6 +122,11 @@ expression that failed:
 expected non zero: config.retries
 expected timeout == expected, got 30 and 45
 ```
+
+A message of your own replaces the default one, operand values included. The
+comparison macros still record the operands in a span, but they reach the
+report only with `spantrace` on and a `tracing_error::ErrorLayer` subscriber
+installed.
 
 ## Tracked results (nightly)
 
@@ -170,8 +178,10 @@ Before turning it on:
 ## Features
 
 - `spantrace` _(default)_ — capture a `tracing` span trace per report link.
-- `to_json` (implies `spantrace`) — `Report::to_json` plus the `tracing_fields`
-  span-field layer.
+- `to_json` _(default)_ (implies `spantrace`) — `Report::to_json` plus the
+  `tracing_fields` span-field layer. On by default for compatibility with 2.1;
+  the next major release drops it from the defaults, so if you use it, enable it
+  explicitly.
 - `backtrace` — capture a `std::backtrace::Backtrace`.
 - `serde_json_value` (implies `to_json`) — inject a pre-serialised
   `serde_json::Value` into span fields via `JsonVisitor::record_json`.
@@ -182,6 +192,8 @@ Before turning it on:
   [Tracked results](#tracked-results-nightly).
 - `tracked_prelude` (implies `tracked`) — `erris::prelude` also exports the
   tracking `Result`, `Ok` and `Err`.
+- `valuable` — deprecated, does nothing. Kept so that builds from 2.1 that name
+  it keep resolving; the next major release removes it.
 
 Minimum supported Rust version: 1.86; `tracked` needs a nightly toolchain.
 

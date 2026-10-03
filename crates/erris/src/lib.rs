@@ -174,7 +174,7 @@ macro_rules! report {
         $crate::Report::new_transparent()
     });
     ($msg:literal $(,)?) => ({
-        $crate::Report::from_format_args(std::format_args!($msg))
+        $crate::Report::from_format_args(::std::format_args!($msg))
     });
     ($err:expr $(,)?) => ({
         use $crate::report_kind::*;
@@ -184,6 +184,6 @@ macro_rules! report {
         error
     });
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::Report::from_message(format!($fmt, $($arg)*))
+        $crate::Report::from_message(::std::format!($fmt, $($arg)*))
     };
 }

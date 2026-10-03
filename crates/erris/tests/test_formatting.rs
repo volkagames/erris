@@ -118,8 +118,14 @@ fn debug_snapshot_of_deeply_nested_error() {
     );
 
     // The location block lists one frame per tracked construction point; assert
-    // structure, not concrete line numbers.
-    let location_block = tail.split("\n\nSpanTrace:").next().unwrap();
+    // structure, not concrete line numbers. The block ends at whichever trace
+    // section comes next: without `spantrace`, the backtrace follows directly
+    // and its frames point at this file too.
+    let location_block = tail
+        .split("\n\nSpanTrace:")
+        .next()
+        .and_then(|block| block.split("\n\nBacktrace:").next())
+        .unwrap();
     let frames: Vec<&str> = location_block
         .lines()
         .filter(|l| l.contains("test_formatting.rs"))

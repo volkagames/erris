@@ -335,3 +335,91 @@ fn err_takes_a_result_by_reference() {
     // A temporary works too, as long as the outcome is used in the same statement.
     assert!(be::err!(&Ok::<u32, &str>(1)).is_err());
 }
+
+#[test]
+fn operands_with_braces_stay_out_of_the_format_string() {
+    #[derive(Debug, PartialEq)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+    let p = Point { x: 1, y: 2 };
+
+    // Regression: the operands' source text was spliced into the format string,
+    // so a struct literal did not compile and `{0}` was read as a placeholder.
+    assert_eq!(
+        be::eq!(p, Point { x: 1, y: 3 }).unwrap_err().to_string(),
+        "expected p == Point { x: 1, y: 3 }, got Point { x: 1, y: 2 } and Point { x: 1, y: 3 }",
+    );
+    let s = "a";
+    assert_eq!(
+        be::eq!(s, "{}").unwrap_err().to_string(),
+        r#"expected s == "{}", got "a" and "{}""#,
+    );
+    assert_eq!(
+        be::eq!(s, "{0}").unwrap_err().to_string(),
+        r#"expected s == "{0}", got "a" and "{0}""#,
+    );
+    assert_eq!(
+        be::len!({ vec![1] }, 2).unwrap_err().to_string(),
+        "expected { vec![1] } to have length 2, got 1",
+    );
+}
+
+#[test]
+fn a_local_format_macro_does_not_leak_into_the_expansion() {
+    #[allow(unused_macros)]
+    macro_rules! format {
+        ($($t:tt)*) => {
+            42
+        };
+    }
+
+    assert_eq!(
+        be::eq!(1, 2).unwrap_err().to_string(),
+        "expected 1 == 2, got 1 and 2",
+    );
+    assert_eq!(
+        be::len!("ab", 1).unwrap_err().to_string(),
+        r#"expected "ab" to have length 1, got 2"#,
+    );
+    assert_eq!(
+        erris::report!("x = {}", 1).to_string(),
+        "x = 1",
+    );
+}
+
+#[test]
+fn ok_adds_no_link_for_a_report_error() {
+    use erris::prelude::*;
+
+    fn failed() -> Result<(), erris::Report> {
+        Err(erris::report!("inner"))
+    }
+
+    // Regression: a `Report` error was nested one level deeper than
+    // `wrap_report` nests it.
+    let via_be = be::ok!(failed(), "outer").unwrap_err();
+    let via_wrap = failed().wrap_report("outer").unwrap_err();
+    assert_eq!(via_be.chain().count(), via_wrap.chain().count());
+    assert_eq!(via_be.to_string(), "outer");
+    assert!(via_be.chain().any(|link| link.as_error().to_string() == "inner"));
+}
+
+#[test]
+fn ok_accepts_boxed_and_string_errors() {
+    let boxed: Result<(), Box<dyn std::error::Error + Send + Sync>> = Err("boxed".into());
+    let report = be::ok!(boxed, "outer").unwrap_err();
+    assert!(report.chain().any(|link| link.as_error().to_string() == "boxed"));
+
+    let text: Result<(), String> = Err("text".to_string());
+    let report = be::ok!(text, "outer").unwrap_err();
+    assert!(report.chain().any(|link| link.as_error().to_string() == "text"));
+}
+
+#[test]
+fn matches_a_dereferenced_str() {
+    let cmd: &str = "start";
+    assert!(be::matches!(*cmd, "start" | "stop").is_ok());
+    assert!(be::matches!(*cmd, "stop").is_err());
+}

@@ -16,7 +16,9 @@ categories = ["rust-patterns", "development-tools::debugging"]
 features = ["to_json", "serde_json_value", "backtrace"]
 
 [features]
-default = ["spantrace"]
+# `to_json` was a default up to 2.1. 2.2.0 dropped it, which broke builds that
+# relied on it; it stays a default until the next major release.
+default = ["spantrace", "to_json"]
 spantrace = [
     "dep:tracing-core",
     "dep:tracing-error",
@@ -32,6 +34,9 @@ serde_json_value = ["to_json"]
 tracked = []
 # Also exports the tracking `Result`, `Ok` and `Err` from `erris::prelude`.
 tracked_prelude = ["tracked"]
+# Deprecated, does nothing. 2.2.0 removed it, which broke dependency resolution
+# for crates that named it; kept until the next major release.
+valuable = []
 
 [dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }
