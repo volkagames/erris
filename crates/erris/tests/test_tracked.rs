@@ -526,6 +526,17 @@ fn copied_cloned_transpose_flatten() {
     let none: Result<Option<u32>> = Ok(None);
     assert!(none.transpose().is_none());
 
+    // `Option<TrackedResult>` → `TrackedResult<Option>` via the prelude's `OptionTranspose`.
+    let some: Option<Result<u32>> = Some(Ok(1));
+    assert_eq!(some.transpose().ok(), Some(Some(1)));
+    let none: Option<Result<u32>> = None;
+    assert_eq!(none.transpose().ok(), Some(None));
+    let failed: Option<Result<u32>> = Some(leaf());
+    assert!(failed.transpose().is_err());
+    // A std `Option<Result>` still takes std's inherent `transpose`.
+    let std_some: Option<StdResult<u32, Report>> = Some(StdResult::Ok(2));
+    assert!(matches!(std_some.transpose(), StdResult::Ok(Some(2))));
+
     let nested: Result<Result<u32>> = Ok(Ok(1));
     assert_eq!(nested.flatten().ok(), Some(1));
     let nested: Result<Result<u32>> = Ok(leaf());

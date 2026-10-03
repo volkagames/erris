@@ -462,6 +462,26 @@ impl<T, E: ReportOnly> TrackedResult<Option<T>, E> {
     }
 }
 
+/// `Option<TrackedResult<T>>` → `TrackedResult<Option<T>>`, the counterpart of
+/// std's `Option::<Result<T, E>>::transpose`, which only takes a std `Result`.
+///
+/// `erris::prelude` exports it, so `opt.map(load).transpose()` reads the same
+/// with and without `tracked`: std's inherent method does not apply to an
+/// `Option<TrackedResult>`, and the call resolves to this trait instead.
+pub trait OptionTranspose<T, E: ReportOnly> {
+    fn transpose(self) -> TrackedResult<Option<T>, E>;
+}
+
+impl<T, E: ReportOnly> OptionTranspose<T, E> for Option<TrackedResult<T, E>> {
+    fn transpose(self) -> TrackedResult<Option<T>, E> {
+        match self {
+            Some(Ok(t)) => Ok(Some(t)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    }
+}
+
 impl<T, E: ReportOnly> TrackedResult<TrackedResult<T, E>, E> {
     pub fn flatten(self) -> TrackedResult<T, E> {
         match self {

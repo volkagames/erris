@@ -149,9 +149,11 @@ fn double(s: &str) -> Result<u32> {
 ```
 
 `TrackedResult` mirrors the methods of std `Result`, and its error is always a
-`Report`. A function whose signature a foreign trait dictates — a web handler, a
-`FromStr` impl — keeps returning std `Result`; `?` converts in both directions
-and records the hop either way.
+`Report`. For `Option<TrackedResult<T>>`, `erris::prelude` brings in
+`OptionTranspose`, so `opt.map(load).transpose()` compiles in both modes. A
+function whose signature a foreign trait dictates — a web handler, a `FromStr`
+impl — keeps returning std `Result`; `?` converts in both directions and records
+the hop either way.
 
 Each hop is recorded once: a report already located on the `?` line — by
 `wrap_report`, a `be` macro, or the error conversion itself — gets no second

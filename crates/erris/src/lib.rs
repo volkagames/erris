@@ -148,6 +148,10 @@ pub mod prelude {
     pub use crate::Result;
     #[cfg(feature = "tracked_prelude")]
     pub use crate::tracked::{Err, Ok};
+    // Not a std name, so plain `tracked` exports it: `.transpose()` on an
+    // `Option<TrackedResult>` then compiles like std's on an `Option<Result>`.
+    #[cfg(feature = "tracked")]
+    pub use crate::tracked::OptionTranspose;
     pub use crate::{BoxIntoReport, OkOrReport, Report, TrackReport, WrapBoxReport, WrapReport};
 }
 
