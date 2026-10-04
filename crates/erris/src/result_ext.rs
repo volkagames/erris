@@ -174,17 +174,30 @@ impl<T> WrapBoxReport<T> for Result<T, Box<dyn std::error::Error + Send + Sync +
     }
 }
 
-/// `into_std()` on a std `Result<T, Report>`: the identity. With `tracked` on,
+/// `into_std()` on a std `Result<T, Report>` (or `&Report` / `&mut Report`, as
+/// `as_ref` / `as_mut` give): the identity. With `tracked` on,
 /// `TrackedResult::into_std` is the inherent method of the same name, so
 /// handing a result to an API bounded on std `Result` — `try_join_all`, a
 /// diesel `transaction`, `OnceCell::get_or_try_init` — reads the same in both
 /// modes. Exported from [`prelude`](crate::prelude).
-pub trait IntoStd<T> {
-    fn into_std(self) -> Result<T, Report>;
+pub trait IntoStd<T, E> {
+    fn into_std(self) -> Result<T, E>;
 }
 
-impl<T> IntoStd<T> for Result<T, Report> {
-    fn into_std(self) -> Result<T, Report> {
+impl<T> IntoStd<T, Report> for Result<T, Report> {
+    fn into_std(self) -> Self {
+        self
+    }
+}
+
+impl<'a, T> IntoStd<T, &'a Report> for Result<T, &'a Report> {
+    fn into_std(self) -> Self {
+        self
+    }
+}
+
+impl<'a, T> IntoStd<T, &'a mut Report> for Result<T, &'a mut Report> {
+    fn into_std(self) -> Self {
         self
     }
 }

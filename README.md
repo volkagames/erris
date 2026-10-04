@@ -148,8 +148,9 @@ fn double(s: &str) -> erris::Result<u32> {
 }
 ```
 
-The same code builds without `tracked`, with `.track()` doing the job by hand,
-so turning the feature on or off changes no source.
+The same code builds without `tracked`, so turning the feature on or off
+changes no source. There the `?` in `double` records nothing; write
+`parse(s).track()?` to locate that hop by hand.
 
 `TrackedResult` mirrors the methods of std `Result`, and its error is always a
 `Report`. A function whose signature a foreign trait dictates — a web handler, a
@@ -177,12 +178,15 @@ Before turning it on:
 
 1. Pin a nightly toolchain (`rust-toolchain.toml`) and enable the feature on the
    application crate only: `erris = { version = "3.1", features = ["tracked"] }`.
-   Crates that ship erris-based traits may need their own switch (treat:
-   `features = ["tracked"]`).
+   Crates that ship erris-based traits may need their own `tracked` feature
+   forwarding to `erris/tracked`.
 2. Glob `use erris::prelude::*;` in every module that returns `erris::Result`.
-3. Drop `.track()` before `?` — it adds nothing there:
-   `perl -pi -e 's/\.track\(\)\?/?/g' $(git ls-files '*.rs')`. Keep it where a
-   result is handed on without `?` (a tail call, a `return`).
+3. Drop `.track()` before `?` in the application's own code — with `tracked` it
+   adds nothing there:
+   `perl -pi -e 's/\.track\(\)\?/?/g' $(git ls-files 'path/to/app/*.rs')`.
+   Keep it where a result is handed on without `?` (a tail call, a `return`),
+   and in code that also builds without `tracked`, such as a library, where it
+   is what locates the hop.
 4. Fix what the compiler reports:
 
 | Error | Cause | Fix |
@@ -237,7 +241,8 @@ Full API documentation: [docs.rs/erris](https://docs.rs/erris).
   error reads the same in both modes. A `?` on it still records the hop; to add
   context and stay tracked, use `wrap_report`.
 - **New:** `OptionTranspose` (`.transpose()` on `Option<TrackedResult>`) and
-  `IntoStd` (`.into_std()` on a std `Result<T, Report>`), both in the prelude.
+  `IntoStd` (`.into_std()` on a std `Result<T, Report>`, `&Report` or
+  `&mut Report`), both in the prelude.
 
 ## Upgrading from 2.x
 

@@ -62,3 +62,16 @@ fn into_std_in_every_mode() {
         load(false).into_std().map_err(|e| e.to_string());
     assert_eq!(failed, std::result::Result::Err("boom".to_owned()));
 }
+
+/// Borrowed results too: `as_ref` / `as_mut` give a `&Report` / `&mut Report`
+/// error, and `into_std()` hands them on in both modes.
+#[test]
+fn into_std_on_borrowed_results() {
+    let mut res: erris::Result<u32> = erris::Result::Err(erris::report!("boom"));
+
+    let by_ref: std::result::Result<&u32, &Report> = res.as_ref().into_std();
+    assert_eq!(by_ref.unwrap_err().to_string(), "boom");
+
+    let by_mut: std::result::Result<&mut u32, &mut Report> = res.as_mut().into_std();
+    assert_eq!(by_mut.unwrap_err().to_string(), "boom");
+}

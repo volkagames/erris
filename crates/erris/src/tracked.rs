@@ -289,8 +289,8 @@ impl<T, E: ReportOnly> TrackedResult<T, E> {
 }
 
 /// The rest of std's `Result` methods need the report itself: the borrowing
-/// views hand out `&Report`, and where std lets the error type change, the new
-/// error is converted back into a `Report`.
+/// views hand out `&Report`, and `map_err` hands it to the closure and returns
+/// a std `Result` with the closure's error type.
 impl<T> TrackedResult<T> {
     pub const fn as_ref(&self) -> TrackedResult<&T, &Report> {
         match self {
