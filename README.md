@@ -152,9 +152,11 @@ The same code builds without `tracked`, so turning the feature on or off
 changes no source. There the `?` in `double` records nothing; write
 `parse(s).track()?` to locate that hop by hand.
 
-`TrackedResult` mirrors the methods of std `Result`, and its error is always a
-`Report`. A function whose signature a foreign trait dictates — a web handler, a
-`FromStr` impl — keeps returning std `Result`; `?` converts in both directions
+`TrackedResult` mirrors the methods of std `Result`. Its error is a `Report`
+unless the type names another error that implements `TrackedError` (see
+[Other error types](#other-error-types)). A function whose signature a foreign
+trait dictates — a `FromStr` impl, a serde or `fmt` impl — keeps returning std
+`Result`; `?` converts in both directions
 and records the hop either way. Each hop is recorded once: a report already
 located on the `?` line — by `wrap_report`, a `be` macro, or the error
 conversion itself — gets no second frame. `wrap_report`, `ok_or_report`,
@@ -171,8 +173,42 @@ Before turning it on:
 - **`Ok` and `Err` come from the prelude.** A module that globs `erris::prelude`
   gets the tracking `Ok`/`Err` with `tracked` and std's without it. A bare
   `Result<T, E>` stays std's; an erris result is `erris::Result<T>`.
-- **`erris::Result<T, E>` with an error type is a compile error.** The error is
-  fixed to `Report`.
+- **`erris::Result<T, E>` needs a tracking `E`.** An error type that does not
+  implement `TrackedError` is a compile error with a hint.
+
+### Other error types
+
+An error type of your own — say, an HTTP layer's typed error — takes part by
+implementing `erris::tracked::TrackedError`, whose one method records the hop of
+a `?`:
+
+```rust
+use erris::tracked::TrackedError;
+
+impl TrackedError for ApiError {
+    #[track_caller]
+    fn track_hop(self) -> Self {
+        self.track() // record `Location::caller()`, the `?` site
+    }
+}
+```
+
+Its functions then return `erris::Result<T, ApiError>` and use the same
+prelude `Ok`/`Err` as the rest of the code. `?` passes an `ApiError` on and
+builds one from a std error it has a `From` for, but never turns a `Report` into
+it: that stays explicit, where the call site picks the code and message. The
+other way round works: if `ApiError` is a std error, `?` in a function returning
+`erris::Result<T>` turns it into a `Report`, as it would from a std `Result`.
+
+With the `axum` feature, a `TrackedResult` whose value and error are both axum
+responses is a response too, so a handler returns it directly:
+
+```rust
+async fn handler() -> erris::Result<Json<User>, ApiError> {
+    let user = load_user().await?; // an `ApiError` passed on, located here
+    Ok(Json(user))
+}
+```
 
 ### Enabling `tracked` in an application
 
@@ -195,7 +231,7 @@ Before turning it on:
 | `E0308` in a `fmt::Display`, `FromStr`, serde or framework impl | std result in a module that globs the prelude | `std::result::Result::Ok(..)` / `Err(..)` |
 | `E0599` no method `transpose` on `Option<TrackedResult<_>>` | the glob is missing | `use erris::prelude::*;` (brings `OptionTranspose`) |
 | a std API wants `Result` (`try_join_all`, diesel `transaction`, `OnceCell::get_or_try_init`) | it is bounded on std `Result` | `.into_std()` |
-| `erris::Result<T, E>` does not compile | the error is fixed to `Report` | `std::result::Result<T, E>` |
+| `erris::Result<T, E>` does not compile | `E` does not implement `TrackedError` | implement it, or `std::result::Result<T, E>` |
 
 ### Libraries
 
@@ -223,6 +259,8 @@ cargo +nightly check --all-targets --features erris/tracked
 - `tracked` _(nightly only)_ — `erris::Result` becomes `TrackedResult`, whose `?`
   records a location on every hop, and the prelude's `Ok`/`Err` become its
   variants. See [Tracked results](#tracked-results-nightly).
+- `axum` (with `tracked`) — an axum handler can return a `TrackedResult` whose
+  value and error are both responses. See [Other error types](#other-error-types).
 
 Minimum supported Rust version: 1.86; `tracked` needs a nightly toolchain.
 

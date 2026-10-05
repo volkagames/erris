@@ -383,10 +383,7 @@ fn a_local_format_macro_does_not_leak_into_the_expansion() {
         be::len!("ab", 1).unwrap_err().to_string(),
         r#"expected "ab" to have length 1, got 2"#,
     );
-    assert_eq!(
-        erris::report!("x = {}", 1).to_string(),
-        "x = 1",
-    );
+    assert_eq!(erris::report!("x = {}", 1).to_string(), "x = 1",);
 }
 
 #[test]
@@ -403,18 +400,30 @@ fn ok_adds_no_link_for_a_report_error() {
     let via_wrap = failed().wrap_report("outer").unwrap_err();
     assert_eq!(via_be.chain().count(), via_wrap.chain().count());
     assert_eq!(via_be.to_string(), "outer");
-    assert!(via_be.chain().any(|link| link.as_error().to_string() == "inner"));
+    assert!(
+        via_be
+            .chain()
+            .any(|link| link.as_error().to_string() == "inner")
+    );
 }
 
 #[test]
 fn ok_accepts_boxed_and_string_errors() {
     let boxed: Result<(), Box<dyn std::error::Error + Send + Sync>> = Err("boxed".into());
     let report = be::ok!(boxed, "outer").unwrap_err();
-    assert!(report.chain().any(|link| link.as_error().to_string() == "boxed"));
+    assert!(
+        report
+            .chain()
+            .any(|link| link.as_error().to_string() == "boxed")
+    );
 
     let text: Result<(), String> = Err("text".to_string());
     let report = be::ok!(text, "outer").unwrap_err();
-    assert!(report.chain().any(|link| link.as_error().to_string() == "text"));
+    assert!(
+        report
+            .chain()
+            .any(|link| link.as_error().to_string() == "text")
+    );
 }
 
 #[test]

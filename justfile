@@ -27,4 +27,4 @@ publish:
 
 test *args='':
     cargo nextest run --run-ignored default $args
-    cargo +nightly nextest run --run-ignored default --features tracked $args
+    cargo +nightly nextest run --run-ignored default --features tracked,axum $args

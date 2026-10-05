@@ -60,6 +60,9 @@
 //! - `tracked` (nightly only): [`Result`] becomes `TrackedResult`, whose `?` records a location on
 //!   every hop, and the `Ok`/`Err` of [`prelude`] become its variants. Not additive: it changes the
 //!   type for every crate in the build.
+//! - `axum` (with `tracked`): a `TrackedResult` whose value and error are axum responses is one
+//!   too, so a handler returns `erris::Result<T, ApiError>` for an error type implementing
+//!   [`TrackedError`](tracked::TrackedError).
 #![cfg_attr(
     any(feature = "tracked", docsrs),
     feature(try_trait_v2, try_trait_v2_residual)
