@@ -30,13 +30,13 @@ fn report_macro_transparent_is_empty() {
 #[test]
 fn from_std_error_is_transparent() {
     let report: Report = Report::from(std::io::Error::other("io error"));
-    assert!(report.is_transparent_error());
+    assert!(report.is_transparent());
 }
 
 #[test]
 fn from_dyn_boxed_is_transparent() {
     let report = Report::from_dyn_boxed("string error".to_string().into());
-    assert!(report.is_transparent_error());
+    assert!(report.is_transparent());
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn reuse_rewraps_an_existing_report_error() {
 fn report_error_new_builds_a_message_error() {
     let err = ReportError::new(ReportType::Message("built directly".into()));
     assert_eq!(err.to_string(), "built directly");
-    assert!(!err.is_transparent_error());
+    assert!(!err.is_transparent());
     // NB: unlike the Report::from_* constructors, ReportError::new is not
     // #[track_caller], so its recorded location is report.rs (the new_track!
     // site), not this caller. Pin that so the divergence is intentional.

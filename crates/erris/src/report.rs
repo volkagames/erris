@@ -282,7 +282,11 @@ impl ReportError {
         self.track.backtrace.as_ref()
     }
 
-    pub fn is_transparent_error(&self) -> bool {
+    /// Whether this link has no message of its own: its `Display` forwards to
+    /// the error it wraps, or is empty for [`new_transparent`](Report::new_transparent).
+    /// Only a message report (`report!("...")`) is not transparent. The same
+    /// test as [`ReportLink::is_transparent`](crate::ReportLink::is_transparent).
+    pub fn is_transparent(&self) -> bool {
         !matches!(self.inner, ReportType::Message(_))
     }
 
@@ -385,7 +389,7 @@ impl erris_meta::ReportMeta for ReportError {
     }
 
     fn report_is_transparent(&self) -> bool {
-        self.is_transparent_error()
+        self.is_transparent()
     }
 
     fn report_branch(

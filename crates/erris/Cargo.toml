@@ -1,6 +1,6 @@
 [package]
 name = "erris"
-version = "3.2.0"
+version = "3.3.0"
 edition = "2024"
 rust-version = "1.86"
 description = "Errors, explained."
@@ -39,16 +39,16 @@ tracked = []
 axum-core = { version = "0.5", optional = true }
 erris-meta = { version = "1", path = "../erris-meta" }
 indenter = { version = "0.3", features = ["std"] }
-serde = { version = "1.0.229", features = ["derive"], optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
-tracing = { version = "0.1.44", optional = true }
+tracing = { version = "0.1", optional = true }
 tracing-core = { version = "0.1", optional = true }
 tracing-error = { version = "0.2", optional = true }
-tracing-subscriber = { version = "0.3.23", optional = true }
+tracing-subscriber = { version = "0.3", optional = true }
 
 [dev-dependencies]
 erris-meta = { version = "1", path = "../erris-meta" }
 http = "1"
-rusty-fork = "0.3.1"
-thiserror = "2.0.20"
+rusty-fork = "0.3"
+thiserror = "2.0"
 tracing-log = "0.2"
