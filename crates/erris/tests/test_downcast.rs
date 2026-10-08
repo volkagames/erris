@@ -130,3 +130,15 @@ fn as_ref_yields_error_trait_objects() {
     let send_sync_ref: &(dyn std::error::Error + Send + Sync + 'static) = report.as_ref();
     assert_eq!(send_sync_ref.to_string(), "some error message");
 }
+
+#[test]
+fn boxed_error_from_report_downcasts_to_report_error() {
+    let report = report!(TestError);
+
+    let boxed: Box<dyn std::error::Error + Send + Sync> = report.into();
+    let inner = boxed
+        .downcast_ref::<ReportError>()
+        .expect("the payload is the ReportError itself");
+
+    assert!(inner.unwrap_recursive::<TestError>().is_some());
+}

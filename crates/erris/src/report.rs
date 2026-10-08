@@ -438,7 +438,7 @@ impl<T: std::error::Error + Send + Sync + 'static> From<T> for Report {
 
 impl From<Report> for Box<dyn std::error::Error + Send + Sync + 'static> {
     fn from(error: Report) -> Self {
-        error.boxed.into()
+        error.boxed
     }
 }
 
