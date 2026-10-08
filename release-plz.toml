@@ -1,0 +1,5 @@
+# erris-meta 1.0.0 is final: later commits only touched its README and `rust-version`, which release-plz
+# would otherwise count as unreleased changes. Remove this to release it again.
+[[package]]
+name = "erris-meta"
+release = false
