@@ -16,3 +16,6 @@ spantrace = ["dep:tracing-error"]
 
 [dependencies]
 tracing-error = { version = "0.2", optional = true }
+
+[package.metadata.publish-plz]
+ignore = ["**"] # feeeze verison
