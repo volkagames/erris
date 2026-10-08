@@ -130,3 +130,14 @@ fn as_ref_yields_error_trait_objects() {
     let send_sync_ref: &(dyn std::error::Error + Send + Sync + 'static) = report.as_ref();
     assert_eq!(send_sync_ref.to_string(), "some error message");
 }
+
+#[test]
+fn boxed_dyn_error_downcasts_to_report_error() {
+    // The erased payload is the ReportError itself, not a Box<ReportError>.
+    let boxed: Box<dyn std::error::Error + Send + Sync> = report!("boom").into();
+    assert!(boxed.downcast_ref::<ReportError>().is_some());
+    assert!(boxed.downcast_ref::<Box<ReportError>>().is_none());
+
+    let boxed: Box<dyn std::error::Error> = report!("boom").into();
+    assert!(boxed.downcast_ref::<ReportError>().is_some());
+}
