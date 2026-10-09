@@ -47,8 +47,7 @@
 //! With the `axum` feature, a `TrackedResult` whose value and error are both
 //! responses is a response too, so an axum handler can return it directly.
 
-use crate::{IntoReport, Report};
-use std::borrow::Cow;
+use crate::{IntoReport, Report, ReportMessage};
 use std::convert::Infallible;
 use std::iter::{Product, Sum};
 use std::ops::{ControlFlow, FromResidual, Residual, Try};
@@ -455,11 +454,11 @@ impl<T> TrackedResult<T> {
     #[track_caller]
     pub fn wrap_report<M>(self, err: M) -> TrackedResult<T>
     where
-        M: Into<Cow<'static, str>>,
+        M: ReportMessage,
     {
         match self {
             Ok(t) => Ok(t),
-            Err(e) => Err(e.with_err(Report::from_message(err.into()))),
+            Err(e) => Err(e.with_report(err.into_message_report())),
         }
     }
 

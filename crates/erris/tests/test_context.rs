@@ -16,6 +16,59 @@ fn ok_or_report_on_option() {
 }
 
 #[test]
+fn ok_or_report_formats_only_on_the_error_path() {
+    struct Counted<'a>(&'a std::cell::Cell<u32>);
+    impl std::fmt::Display for Counted<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            self.0.set(self.0.get() + 1);
+            f.write_str("value")
+        }
+    }
+
+    let calls = std::cell::Cell::new(0);
+    assert!(
+        Some(1)
+            .ok_or_report(format_args!("missing {}", Counted(&calls)))
+            .is_ok()
+    );
+    assert_eq!(calls.get(), 0);
+
+    let err = None::<u32>
+        .ok_or_report(format_args!("missing {}", Counted(&calls)))
+        .unwrap_err();
+    assert_eq!(err.to_string(), "missing value");
+    assert_eq!(calls.get(), 1);
+}
+
+#[test]
+fn ok_or_report_accepts_every_message_kind() {
+    let code = "id";
+    let owned = None::<()>
+        .ok_or_report(format!("owned {code}"))
+        .unwrap_err();
+    assert_eq!(owned.to_string(), "owned id");
+    let cow = None::<()>
+        .ok_or_report(std::borrow::Cow::Borrowed("cow"))
+        .unwrap_err();
+    assert_eq!(cow.to_string(), "cow");
+    let args = None::<()>
+        .ok_or_report(format_args!("args {code}"))
+        .unwrap_err();
+    assert_eq!(args.to_string(), "args id");
+}
+
+#[test]
+fn wrap_report_accepts_format_args() {
+    let code = "id";
+    let res: std::result::Result<(), _> = Err(std::io::Error::other("io boom"));
+    let err = res
+        .wrap_report(format_args!("while loading `{code}`"))
+        .unwrap_err();
+    assert_eq!(err.to_string(), "while loading `id`");
+    assert!(format!("{err:?}").contains("io boom"));
+}
+
+#[test]
 fn ok_or_report_on_result_keeps_error_and_adds_message() {
     let res: std::result::Result<(), _> = Err(std::io::Error::other("io boom"));
     let err = res.ok_or_report("while loading").unwrap_err();

@@ -7,6 +7,59 @@
 
 use crate::{IntoReport, Report};
 use std::borrow::Cow;
+use std::fmt::Arguments;
+
+/// A message for a report built on the error path: a `&'static str`, a
+/// `String`, a `Cow<'static, str>`, or [`format_args!`].
+///
+/// `format_args!` only borrows its arguments, so the message is formatted
+/// when the report is built, not on the happy path. A literal without
+/// arguments is not formatted at all.
+///
+/// ```
+/// use erris::OkOrReport;
+///
+/// let code = "achieve";
+/// let templates: Vec<&str> = Vec::new();
+/// let err = templates
+///     .iter()
+///     .find(|t| **t == code)
+///     .ok_or_report(format_args!("missing template `{code}`"))
+///     .unwrap_err();
+/// assert_eq!(err.to_string(), "missing template `achieve`");
+/// ```
+pub trait ReportMessage {
+    #[track_caller]
+    fn into_message_report(self) -> Report;
+}
+
+impl ReportMessage for &'static str {
+    #[track_caller]
+    fn into_message_report(self) -> Report {
+        Report::from_message(self)
+    }
+}
+
+impl ReportMessage for String {
+    #[track_caller]
+    fn into_message_report(self) -> Report {
+        Report::from_message(self)
+    }
+}
+
+impl ReportMessage for Cow<'static, str> {
+    #[track_caller]
+    fn into_message_report(self) -> Report {
+        Report::from_message(self)
+    }
+}
+
+impl ReportMessage for Arguments<'_> {
+    #[track_caller]
+    fn into_message_report(self) -> Report {
+        Report::from_format_args(self)
+    }
+}
 
 /// Convert an `Option`/`Result` into a [`crate::Result`], supplying a message
 /// (or a fresh report) for the empty/error case.
@@ -14,7 +67,7 @@ pub trait OkOrReport<T> {
     #[track_caller]
     fn ok_or_report<M>(self, message: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>;
+        M: ReportMessage;
 
     #[track_caller]
     fn ok_or_report_with<D, F>(self, f: F) -> crate::Result<T>
@@ -27,11 +80,11 @@ impl<T> OkOrReport<T> for Option<T> {
     #[track_caller]
     fn ok_or_report<M>(self, message: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>,
+        M: ReportMessage,
     {
         match self {
             Some(v) => crate::Result::Ok(v),
-            None => crate::Result::Err(Report::from_message(message.into())),
+            None => crate::Result::Err(message.into_message_report()),
         }
     }
 
@@ -52,11 +105,13 @@ impl<T, E: std::error::Error + Send + Sync + 'static> OkOrReport<T> for std::res
     #[track_caller]
     fn ok_or_report<M>(self, message: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>,
+        M: ReportMessage,
     {
         match self {
             Ok(v) => crate::Result::Ok(v),
-            Err(err) => crate::Result::Err(Report::from_error(err).with_message(message)),
+            Err(err) => crate::Result::Err(
+                Report::from_error(err).with_report(message.into_message_report()),
+            ),
         }
     }
 
@@ -94,7 +149,7 @@ pub trait WrapReport<T, E> {
     #[track_caller]
     fn wrap_report<M>(self, err: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>;
+        M: ReportMessage;
 
     #[track_caller]
     fn wrap_report_with<D, F>(self, f: F) -> crate::Result<T>
@@ -110,13 +165,11 @@ where
     #[track_caller]
     fn wrap_report<M>(self, err: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>,
+        M: ReportMessage,
     {
         match self {
             Ok(t) => crate::Result::Ok(t),
-            Err(e) => {
-                crate::Result::Err(e.into_report().with_err(Report::from_message(err.into())))
-            }
+            Err(e) => crate::Result::Err(e.into_report().with_report(err.into_message_report())),
         }
     }
 
@@ -138,7 +191,7 @@ pub trait WrapBoxReport<T> {
     #[track_caller]
     fn wrap_report<M>(self, err: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>;
+        M: ReportMessage;
 
     #[track_caller]
     fn wrap_report_with<D, F>(self, f: F) -> crate::Result<T>
@@ -151,13 +204,13 @@ impl<T> WrapBoxReport<T> for Result<T, Box<dyn std::error::Error + Send + Sync +
     #[track_caller]
     fn wrap_report<M>(self, err: M) -> crate::Result<T>
     where
-        M: Into<Cow<'static, str>>,
+        M: ReportMessage,
     {
         match self {
             Ok(t) => crate::Result::Ok(t),
-            Err(e) => crate::Result::Err(
-                Report::from_dyn_boxed(e).with_err(Report::from_message(err.into())),
-            ),
+            Err(e) => {
+                crate::Result::Err(Report::from_dyn_boxed(e).with_report(err.into_message_report()))
+            }
         }
     }
 

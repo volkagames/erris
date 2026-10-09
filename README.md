@@ -51,6 +51,36 @@ location via `#[track_caller]`.
 `with_*` operates on a report you already hold; the rest operate on the `Result`
 or `Option` in the `?` position.
 
+## Messages with arguments
+
+Put a message that interpolates values in `format_args!`, not `format!` or a
+closure:
+
+```rust
+let tpl = templates
+    .get(code)
+    .ok_or_report(format_args!("missing template `{code}`"))?;
+```
+
+`format!` builds the `String` on every call, the `Ok` path included.
+`format_args!` only borrows its arguments, and the message is formatted when the
+report is built, on the error path. `ok_or_report` and `wrap_report` take any
+`ReportMessage`: a `&'static str`, a `String`, a `Cow<'static, str>` or
+`format_args!(..)`.
+
+The arguments themselves are evaluated up front:
+`format_args!("{}", ty.to_rust())` calls `to_rust` on the `Ok` path too. When
+the arguments are expensive, or the error is a report of its own, build it in
+the closure:
+
+```rust
+let ty = key_ty.ok_or_report_with(|| report!("bad key `{}`", ty.to_rust()))?;
+```
+
+- a literal: `ok_or_report("missing id")`;
+- a message with arguments: `ok_or_report(format_args!("missing `{code}`"))`;
+- expensive arguments, or a report or error value: `ok_or_report_with(|| report!(..))`.
+
 ## Example
 
 ```rust
@@ -265,6 +295,14 @@ cargo +nightly check --all-targets --features erris/tracked
 Minimum supported Rust version: 1.86; `tracked` needs a nightly toolchain.
 
 Full API documentation: [docs.rs/erris](https://docs.rs/erris).
+
+## Upgrading from 3.3
+
+- **`ok_or_report` and `wrap_report` take a `ReportMessage`** instead of
+  `impl Into<Cow<'static, str>>`. A `&'static str`, a `String` and a `Cow` work
+  as before; a type of your own that converts into `Cow` needs
+  `Cow::from(value)`. New: `format_args!(..)`, see
+  [Messages with arguments](#messages-with-arguments).
 
 ## Upgrading from 3.0
 

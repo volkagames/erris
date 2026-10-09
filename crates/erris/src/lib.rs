@@ -18,6 +18,32 @@
 //! `ok_or_report` operate on the `Result`/`Option` in the `?` position. Both
 //! record a fresh location via `#[track_caller]`.
 //!
+//! # Messages with arguments
+//!
+//! Pass a message that interpolates values as `format_args!`, not `format!`:
+//! `format_args!` only borrows its arguments, so the message is formatted on
+//! the error path alone. [`OkOrReport::ok_or_report`] and
+//! [`WrapReport::wrap_report`] take any [`ReportMessage`].
+//!
+//! ```
+//! use erris::prelude::*;
+//!
+//! fn find<'a>(names: &[&'a str], code: &str) -> erris::Result<&'a str> {
+//!     let name = names
+//!         .iter()
+//!         .find(|n| **n == code)
+//!         .ok_or_report(format_args!("missing template `{code}`"))?;
+//!     Ok(*name)
+//! }
+//!
+//! let err = find(&["achieve"], "goal").unwrap_err();
+//! assert_eq!(err.to_string(), "missing template `goal`");
+//! ```
+//!
+//! The arguments are still evaluated up front. When they are expensive, or the
+//! error is a report of its own, build it in [`OkOrReport::ok_or_report_with`]'s
+//! closure.
+//!
 //! # Example
 //!
 //! ```
